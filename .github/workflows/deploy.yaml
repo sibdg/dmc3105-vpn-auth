@@ -1,0 +1,59 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ "master" ]  # Замените на вашу основную ветку
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Клонируем репозиторий
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Готовим каталог приложения на VPS
+      - name: Prepare VPS directory
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            mkdir -p "${{ secrets.VPS_APP_PATH }}"
+      
+      # 3. Копируем файлы на VPS
+      - name: Copy files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: ".github,backend,frontend,docker-compose.yml,README.md,.gitignore"
+          target: ${{ secrets.VPS_APP_PATH }}
+          strip_components: 0
+          overwrite: true
+      
+      # 4. Выполняем команды на VPS
+      - name: Deploy application
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ${{ secrets.VPS_APP_PATH }}
+
+            # .env хранится только на VPS и не перезаписывается workflow
+            if [ ! -f backend/.env ]; then
+              echo "ERROR: backend/.env not found on VPS. Create it manually once."
+              exit 1
+            fi
+
+            # Деплой кода и перезапуск контейнеров
+            docker compose down --remove-orphans || true
+            docker compose up -d --build
+            
+            # Очистка старых образов
+            docker system prune -f
