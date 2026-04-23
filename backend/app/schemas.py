@@ -1,0 +1,87 @@
+from datetime import datetime
+
+from pydantic import BaseModel, EmailStr, Field
+
+
+class HealthResponse(BaseModel):
+    status: str
+
+
+class RequestEmailCodeRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyEmailCodeRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=16)
+
+
+class DeleteProfileRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=16)
+
+
+class RegisterRequest(BaseModel):
+    invite_code: str = Field(min_length=6, max_length=64)
+    email: EmailStr
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+
+
+class RegisterResponse(BaseModel):
+    message: str
+    server: str
+    username: EmailStr
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class CreateInviteCodesRequest(BaseModel):
+    amount: int = Field(ge=1, le=200)
+
+
+class InviteCodeOut(BaseModel):
+    code: str
+    created_at: datetime
+    is_used: bool
+    used_at: datetime | None
+    used_by_email: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    first_name: str
+    last_name: str | None
+    created_at: datetime
+    invite_code: str
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
+class PaginatedInviteCodesResponse(BaseModel):
+    items: list[InviteCodeOut]
+    total: int
+    page: int
+    page_size: int
+
+
+class PaginatedUsersResponse(BaseModel):
+    items: list[UserOut]
+    total: int
+    page: int
+    page_size: int

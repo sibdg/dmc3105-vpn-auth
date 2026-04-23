@@ -1,0 +1,126 @@
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
+const CSRF_COOKIE_NAME = import.meta.env.VITE_CSRF_COOKIE_NAME || "vpn_admin_csrf";
+
+function extractErrorMessage(data) {
+  if (!data) return "Request failed";
+  if (typeof data.detail === "string") return data.detail;
+
+  if (Array.isArray(data.detail)) {
+    const parts = data.detail.map((item) => {
+      if (typeof item === "string") return item;
+      if (item?.msg && Array.isArray(item?.loc)) {
+        return `${item.loc.join(".")}: ${item.msg}`;
+      }
+      if (item?.msg) return item.msg;
+      return JSON.stringify(item);
+    });
+    return parts.filter(Boolean).join("; ") || "Request failed";
+  }
+
+  if (typeof data.message === "string") return data.message;
+  return "Request failed";
+}
+
+async function request(path, options = {}) {
+  const { headers: customHeaders = {}, ...restOptions } = options;
+  const method = (restOptions.method || "GET").toUpperCase();
+  const needsCsrf = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  const csrfToken = needsCsrf ? readCookie(CSRF_COOKIE_NAME) : null;
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...restOptions,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+      ...customHeaders
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(extractErrorMessage(data));
+  }
+  return data;
+}
+
+function readCookie(name) {
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${name}=`));
+  return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+}
+
+export function requestEmailCode(email) {
+  return request("/auth/request-email-code", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
+export function verifyEmailCode(email, code) {
+  return request("/auth/verify-email-code", {
+    method: "POST",
+    body: JSON.stringify({ email, code })
+  });
+}
+
+export function requestDeleteCode(email) {
+  return request("/profile/request-delete-code", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
+export function deleteProfile(email, code) {
+  return request("/profile/delete", {
+    method: "POST",
+    body: JSON.stringify({ email, code })
+  });
+}
+
+export function registerUser(payload) {
+  return request("/register", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function adminLogin(username, password) {
+  return request("/admin/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+}
+
+export function adminLogout() {
+  return request("/admin/logout", { method: "POST" });
+}
+
+export function adminSession() {
+  return request("/admin/session");
+}
+
+export function createInviteCodes(amount) {
+  return request("/admin/invite-codes", {
+    method: "POST",
+    body: JSON.stringify({ amount })
+  });
+}
+
+export function getInviteCodes(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => [key, String(value)])
+  ).toString();
+  return request(`/admin/invite-codes${qs ? `?${qs}` : ""}`);
+}
+
+export function getUsers(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => [key, String(value)])
+  ).toString();
+  return request(`/admin/users${qs ? `?${qs}` : ""}`);
+}

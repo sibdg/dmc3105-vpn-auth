@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vpn-auth-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    volumes:
+      - backend_data:/app/data
+      - ${HYSTERIA_CONFIG_HOST_PATH:-/etc/hysteria/config.yaml}:${HYSTERIA_CONFIG_CONTAINER_PATH:-/etc/hysteria/config.yaml}
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: /api
+        VITE_CSRF_COOKIE_NAME: vpn_admin_csrf
+    container_name: vpn-auth-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  backend_data:
