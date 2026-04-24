@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.proxy_prefix import StripProxyPathPrefix
 from app.database import Base, engine, get_db
 from app.models import InviteCode, User
 from app.schemas import (
@@ -66,6 +67,9 @@ app.add_middleware(
     allow_methods=parse_csv_setting(settings.cors_allow_methods),
     allow_headers=parse_csv_setting(settings.cors_allow_headers),
 )
+
+if settings.proxy_path_prefix.strip():
+    app.add_middleware(StripProxyPathPrefix, prefix=settings.proxy_path_prefix)
 
 
 @app.on_event("startup")

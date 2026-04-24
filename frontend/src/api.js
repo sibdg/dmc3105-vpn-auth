@@ -1,5 +1,16 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
 const CSRF_COOKIE_NAME = import.meta.env.VITE_CSRF_COOKIE_NAME || "vpn_admin_csrf";
+
+function getApiBase() {
+  const raw = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (!raw.startsWith("/")) return raw;
+  if (typeof window === "undefined") return raw;
+  const { origin, protocol, host, hostname } = window.location;
+  if (import.meta.env.DEV) return `${origin}${raw}`;
+  if (hostname === "localhost" || hostname === "127.0.0.1") return `${origin}${raw}`;
+  if (protocol === "https:") return `${origin}${raw}`;
+  return `https://${host}${raw}`;
+}
 
 function extractErrorMessage(data) {
   if (!data) return "Request failed";
@@ -26,7 +37,7 @@ async function request(path, options = {}) {
   const method = (restOptions.method || "GET").toUpperCase();
   const needsCsrf = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
   const csrfToken = needsCsrf ? readCookie(CSRF_COOKIE_NAME) : null;
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${getApiBase()}${path}`, {
     ...restOptions,
     credentials: "include",
     headers: {

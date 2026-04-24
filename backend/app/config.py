@@ -8,6 +8,8 @@ class Settings(BaseSettings):
 
     app_name: str = "VPN Auth Service"
     api_prefix: str = "/api"
+    # When nginx passes /vpn-auth/api/... instead of /api/... (misconfigured proxy_pass)
+    proxy_path_prefix: str = ""
 
     database_url: str = "sqlite:///./vpn_auth.db"
     secret_key: str = "change-me-in-production"
