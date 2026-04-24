@@ -51,9 +51,18 @@ jobs:
               exit 1
             fi
 
+            # Корневой .env задает кастомные host-порты для docker-compose
+            # Пример:
+            # FRONTEND_HOST_PORT=18080
+            # BACKEND_HOST_PORT=18000
+            if [ ! -f .env ]; then
+              echo "ERROR: .env not found in VPS app path. Create it manually once."
+              exit 1
+            fi
+
             # Деплой кода и перезапуск контейнеров
-            docker compose down --remove-orphans || true
-            docker compose up -d --build
+            docker compose --env-file .env down --remove-orphans || true
+            docker compose --env-file .env up -d --build
             
             # Очистка старых образов
             docker system prune -f
