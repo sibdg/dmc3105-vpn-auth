@@ -3,6 +3,7 @@ import { Button, Card, Form } from "react-bootstrap";
 import { QRCodeCanvas } from "qrcode.react";
 
 const CONNECTION_KEY = "vpn_connection_data";
+const HYSTERIA_URI_TAG = import.meta.env.VITE_HYSTERIA_URI_TAG || "VPN Auth";
 
 function normalizeConnectionData(raw) {
   if (!raw || typeof raw !== "object") return null;
@@ -64,7 +65,8 @@ export default function ConnectionPage({ notify }) {
     const { host, port } = parseServerEndpoint(server);
     const auth = encodeURIComponent(`${username}:${password}`);
     const sni = encodeURIComponent(host || server);
-    return `hysteria2://${auth}@${host || server}:${port}?sni=${sni}#VPN%20Auth`;
+    const tag = encodeURIComponent(HYSTERIA_URI_TAG);
+    return `hysteria2://${auth}@${host || server}:${port}?sni=${sni}#${tag}`;
   };
 
   return (
