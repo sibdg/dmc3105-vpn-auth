@@ -30,7 +30,19 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: ".github,backend,frontend,docker-compose.yml,README.md,.gitignore,deploy,.env.example"
+          source: ".github,backend,frontend,docker-compose.yml,README.md,.gitignore,deploy"
+          target: ${{ secrets.VPS_APP_PATH }}
+          strip_components: 0
+          overwrite: true
+
+      # Dotfiles can be skipped by glob/pack behavior in some setups, copy explicitly.
+      - name: Copy root env example to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: ".env.example"
           target: ${{ secrets.VPS_APP_PATH }}
           strip_components: 0
           overwrite: true
