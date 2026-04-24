@@ -9,6 +9,23 @@ function formatDate(value) {
   return new Date(normalized).toLocaleString();
 }
 
+function buildInviteShareText(code) {
+  const appName = import.meta.env.VITE_APP_NAME || "VPN";
+  const basename = import.meta.env.VITE_ROUTER_BASENAME || "/";
+  const guidesPath = basename === "/" ? "/guides" : `${String(basename).replace(/\/+$/, "")}/guides`;
+  const link = typeof window !== "undefined" ? `${window.location.origin}${guidesPath}` : guidesPath;
+  return `Подключение ${appName}
+
+Ссылка: ${link}
+Инвайт-код: ${code}`;
+}
+
+function isNarrowScreenForShare() {
+  if (typeof window === "undefined") return false;
+  /* Совпадает с Bootstrap md: как у сетки кнопок до d-md-flex */
+  return window.matchMedia("(max-width: 767.98px)").matches;
+}
+
 function SortableHeader({ label, column, sortBy, sortDir, onClick }) {
   const isActive = sortBy === column;
   const icon = isActive ? (sortDir === "asc" ? "bi bi-sort-up" : "bi bi-sort-down") : "bi bi-arrow-down-up";
@@ -66,6 +83,26 @@ function AdminCodesContent({ logout, notify }) {
   const copy = async (text) => {
     await navigator.clipboard.writeText(text);
     notify("success", "Код скопирован.");
+  };
+
+  const shareOrCopyInvite = async (code) => {
+    const text = buildInviteShareText(code);
+    const preferShare = isNarrowScreenForShare() && typeof navigator.share === "function";
+    if (preferShare) {
+      try {
+        await navigator.share({ text });
+        notify("success", "Готово.");
+        return;
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      notify("success", preferShare ? "Текст приглашения скопирован." : "Приглашение скопировано в буфер.");
+    } catch (err) {
+      notify("danger", err?.message || "Не удалось скопировать.");
+    }
   };
 
   const handleDeleteInvite = async (item) => {
@@ -190,27 +227,39 @@ function AdminCodesContent({ logout, notify }) {
                   <td>{formatDate(item.created_at)}</td>
                   <td>{formatDate(item.used_at)}</td>
                   <td>
-                    <Button size="sm" variant="outline-primary" onClick={() => copy(item.code)} title="Копировать код" className="me-2">
-                      <i className="bi bi-copy" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={item.is_transferred ? "outline-secondary" : "outline-success"}
-                      className="me-2"
-                      onClick={() => toggleTransferred(item)}
-                      title={item.is_transferred ? "Снять метку передачи" : "Пометить как переданный"}
+                    <div
+                      className="d-grid gap-2 d-md-flex flex-md-nowrap"
+                      style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
                     >
-                      <i className={item.is_transferred ? "bi bi-check2-square" : "bi bi-square"} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline-danger"
-                      onClick={() => handleDeleteInvite(item)}
-                      disabled={item.is_used}
-                      title={item.is_used ? "Нельзя удалить использованный код" : "Удалить код"}
-                    >
-                      <i className="bi bi-trash" />
-                    </Button>
+                      <Button size="sm" variant="outline-primary" onClick={() => copy(item.code)} title="Копировать код">
+                        <i className="bi bi-copy" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={item.is_transferred ? "outline-secondary" : "outline-success"}
+                        onClick={() => toggleTransferred(item)}
+                        title={item.is_transferred ? "Снять метку передачи" : "Пометить как переданный"}
+                      >
+                        <i className={item.is_transferred ? "bi bi-check2-square" : "bi bi-square"} />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        onClick={() => handleDeleteInvite(item)}
+                        disabled={item.is_used}
+                        title={item.is_used ? "Нельзя удалить использованный код" : "Удалить код"}
+                      >
+                        <i className="bi bi-trash" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline-info"
+                        onClick={() => shareOrCopyInvite(item.code)}
+                        title="Поделиться текстом приглашения"
+                      >
+                        <i className="bi bi-share" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
