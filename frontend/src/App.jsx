@@ -4,6 +4,7 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import ToastCenter from "./components/ToastCenter";
 import AdminPage from "./pages/AdminPage";
 import ConnectionPage from "./pages/ConnectionPage";
+import ConsentPage from "./pages/ConsentPage";
 import DeleteProfilePage from "./pages/DeleteProfilePage";
 import GuidePage from "./pages/GuidePage";
 import RegistrationPage from "./pages/RegistrationPage";
@@ -20,6 +21,9 @@ function Navigation() {
       </Button>
       <Button as={Link} to="/delete-profile" variant={pathname === "/delete-profile" ? "danger" : "outline-danger"}>
         Удалить профиль
+      </Button>
+      <Button as={Link} to="/consent" variant={pathname === "/consent" ? "secondary" : "outline-secondary"}>
+        Согласие
       </Button>
     </div>
   );
@@ -46,6 +50,7 @@ export default function App() {
           <Route path="/" element={<RegistrationPage notify={notify} />} />
           <Route path="/connection" element={<ConnectionPage notify={notify} />} />
           <Route path="/delete-profile" element={<DeleteProfilePage notify={notify} />} />
+          <Route path="/consent" element={<ConsentPage />} />
           <Route path="/guides/:os" element={<GuidePage />} />
           <Route path="/admin/*" element={<AdminPage notify={notify} />} />
           <Route path="*" element={<Navigate to="/" replace />} />

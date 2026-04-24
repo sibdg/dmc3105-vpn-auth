@@ -127,6 +127,10 @@ export function getInviteCodes(params = {}) {
   return request(`/admin/invite-codes${qs ? `?${qs}` : ""}`);
 }
 
+export function deleteInviteCode(code) {
+  return request(`/admin/invite-codes/${encodeURIComponent(code)}`, { method: "DELETE" });
+}
+
 export function getUsers(params = {}) {
   const qs = new URLSearchParams(
     Object.entries(params)
@@ -134,4 +138,8 @@ export function getUsers(params = {}) {
       .map(([key, value]) => [key, String(value)])
   ).toString();
   return request(`/admin/users${qs ? `?${qs}` : ""}`);
+}
+
+export function deleteUserById(userId) {
+  return request(`/admin/users/${userId}`, { method: "DELETE" });
 }

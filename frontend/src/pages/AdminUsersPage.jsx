@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Table } from "react-bootstrap";
-import { getUsers } from "../api";
+import { Button, Card, Modal, Table } from "react-bootstrap";
+import { deleteUserById, getUsers } from "../api";
 import AdminAuthGate from "../components/AdminAuthGate";
 
 function formatDate(value) {
@@ -35,6 +35,8 @@ function AdminUsersContent({ logout, notify }) {
   const [total, setTotal] = useState(0);
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const pageSize = 20;
 
   const loadPage = async (currentPage, by = sortBy, dir = sortDir) => {
@@ -66,6 +68,21 @@ function AdminUsersContent({ logout, notify }) {
     loadPage(1, column, nextDir).catch((err) => notify("danger", err.message));
   };
 
+  const confirmDeleteUser = async () => {
+    if (!userToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await deleteUserById(userToDelete.id);
+      notify("success", `Пользователь ${userToDelete.email} удален.`);
+      setUserToDelete(null);
+      await loadPage(1, sortBy, sortDir);
+    } catch (err) {
+      notify("danger", err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <Card>
@@ -85,6 +102,7 @@ function AdminUsersContent({ logout, notify }) {
                 <SortableHeader label="Фамилия" column="last_name" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("last_name")} />
                 <SortableHeader label="Дата регистрации" column="created_at" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("created_at")} />
                 <th>Invite код</th>
+                <th>Действие</th>
               </tr>
             </thead>
             <tbody>
@@ -95,6 +113,15 @@ function AdminUsersContent({ logout, notify }) {
                   <td>{user.last_name || "-"}</td>
                   <td>{formatDate(user.created_at)}</td>
                   <td>{user.invite_code}</td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="outline-danger"
+                      onClick={() => setUserToDelete(user)}
+                    >
+                      Удалить
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -111,6 +138,22 @@ function AdminUsersContent({ logout, notify }) {
             </Button>
           </div>
         </div>
+        <Modal show={Boolean(userToDelete)} onHide={() => !isDeleting && setUserToDelete(null)} centered>
+          <Modal.Header closeButton={!isDeleting}>
+            <Modal.Title>Подтверждение удаления</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {userToDelete ? `Удалить пользователя ${userToDelete.email}? Действие необратимо.` : ""}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setUserToDelete(null)} disabled={isDeleting}>
+              Отмена
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteUser} disabled={isDeleting}>
+              {isDeleting ? "Удаление..." : "Удалить"}
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </Card.Body>
     </Card>
   );

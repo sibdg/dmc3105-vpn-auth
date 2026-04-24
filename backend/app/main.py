@@ -249,6 +249,24 @@ def list_invite_codes(
     return PaginatedInviteCodesResponse(items=items, total=total, page=page, page_size=page_size)
 
 
+@app.delete(f"{settings.api_prefix}/admin/invite-codes/{{code}}", response_model=MessageResponse)
+def delete_invite_code(
+    code: str,
+    admin: str = Depends(get_current_admin),
+    _: None = Depends(validate_csrf),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    invite = db.query(InviteCode).filter(InviteCode.code == code).first()
+    if not invite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+    if invite.is_used:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete used invite code")
+    db.delete(invite)
+    db.commit()
+    write_audit_log(db, "invite_code_deleted", admin, f"Deleted invite code {code}")
+    return MessageResponse(message="Invite code deleted")
+
+
 @app.get(f"{settings.api_prefix}/admin/users", response_model=PaginatedUsersResponse)
 def list_users(
     page: int = Query(default=1, ge=1),
@@ -276,3 +294,22 @@ def list_users(
         for item in users
     ]
     return PaginatedUsersResponse(items=items, total=total, page=page, page_size=page_size)
+
+
+@app.delete(f"{settings.api_prefix}/admin/users/{{user_id}}", response_model=MessageResponse)
+def delete_user_by_admin(
+    user_id: int,
+    admin: str = Depends(get_current_admin),
+    _: None = Depends(validate_csrf),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not user.vpn_username:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="VPN username is missing")
+    remove_hysteria_user(user.vpn_username)
+    db.delete(user)
+    db.commit()
+    write_audit_log(db, "user_deleted_by_admin", admin, f"Deleted user {user.email}")
+    return MessageResponse(message="User deleted")

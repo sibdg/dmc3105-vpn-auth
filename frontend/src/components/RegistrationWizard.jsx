@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Col, Form, Row } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import { registerUser, requestEmailCode, verifyEmailCode } from "../api";
 
 const STATE_KEY = "vpn_registration_state";
@@ -24,6 +25,7 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
   const [inviteCode, setInviteCode] = useState(saved?.inviteCode || "");
   const [firstName, setFirstName] = useState(saved?.firstName || "");
   const [lastName, setLastName] = useState(saved?.lastName || "");
+  const [consentAccepted, setConsentAccepted] = useState(Boolean(saved?.consentAccepted));
   const [nowTs, setNowTs] = useState(Date.now());
   const [resendAvailableAt, setResendAvailableAt] = useState(() => {
     try {
@@ -40,9 +42,9 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
   const resendSecondsLeft = Math.max(0, Math.ceil((resendAvailableAt - nowTs) / 1000));
 
   useEffect(() => {
-    localStorage.setItem(STATE_KEY, JSON.stringify({ step, email, code, inviteCode, firstName, lastName }));
+    localStorage.setItem(STATE_KEY, JSON.stringify({ step, email, code, inviteCode, firstName, lastName, consentAccepted }));
     onStepChange(step);
-  }, [step, email, code, inviteCode, firstName, lastName, onStepChange]);
+  }, [step, email, code, inviteCode, firstName, lastName, consentAccepted, onStepChange]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 1000);
@@ -114,8 +116,24 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
               <Form.Label>Email для регистрации</Form.Label>
               <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </Form.Group>
+            <Form.Group className="mt-3">
+              <Form.Check
+                id="consent-accepted"
+                type="checkbox"
+                checked={consentAccepted}
+                onChange={(e) => setConsentAccepted(e.target.checked)}
+                label={
+                  <span>
+                    Я согласен(на) на обработку персональных данных.{" "}
+                    <Link to="/consent" target="_blank" rel="noreferrer">
+                      Подробнее
+                    </Link>
+                  </span>
+                }
+              />
+            </Form.Group>
             <div className="mt-3">
-              <Button type="submit" disabled={isRequestingCode || !emailIsValid || resendSecondsLeft > 0}>
+              <Button type="submit" disabled={isRequestingCode || !emailIsValid || !consentAccepted || resendSecondsLeft > 0}>
                 {isRequestingCode
                   ? "Отправка..."
                   : resendSecondsLeft > 0

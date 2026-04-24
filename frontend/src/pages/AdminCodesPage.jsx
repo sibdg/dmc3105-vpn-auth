@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Badge, Button, Card, Form, Table } from "react-bootstrap";
-import { createInviteCodes, getInviteCodes } from "../api";
+import { Badge, Button, Card, Form, Modal, Table } from "react-bootstrap";
+import { createInviteCodes, deleteInviteCode, getInviteCodes } from "../api";
 import AdminAuthGate from "../components/AdminAuthGate";
 
 function formatDate(value) {
@@ -37,6 +37,8 @@ function AdminCodesContent({ logout, notify }) {
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [inviteToDelete, setInviteToDelete] = useState(null);
+  const [isDeletingInvite, setIsDeletingInvite] = useState(false);
   const pageSize = 20;
 
   const loadPage = async (currentPage, by = sortBy, dir = sortDir, filter = statusFilter) => {
@@ -63,6 +65,29 @@ function AdminCodesContent({ logout, notify }) {
   const copy = async (text) => {
     await navigator.clipboard.writeText(text);
     notify("success", "Код скопирован.");
+  };
+
+  const handleDeleteInvite = async (item) => {
+    if (item.is_used) {
+      notify("warning", "Можно удалять только неактивированные коды.");
+      return;
+    }
+    setInviteToDelete(item);
+  };
+
+  const confirmDeleteInvite = async () => {
+    if (!inviteToDelete || isDeletingInvite) return;
+    setIsDeletingInvite(true);
+    try {
+      await deleteInviteCode(inviteToDelete.code);
+      notify("success", `Инвайт-код ${inviteToDelete.code} удален.`);
+      setInviteToDelete(null);
+      await loadPage(1, sortBy, sortDir, statusFilter);
+    } catch (err) {
+      notify("danger", err.message);
+    } finally {
+      setIsDeletingInvite(false);
+    }
   };
 
   useEffect(() => {
@@ -151,8 +176,17 @@ function AdminCodesContent({ logout, notify }) {
                   <td>{formatDate(item.created_at)}</td>
                   <td>{formatDate(item.used_at)}</td>
                   <td>
-                    <Button size="sm" variant="outline-primary" onClick={() => copy(item.code)} title="Копировать код">
+                    <Button size="sm" variant="outline-primary" onClick={() => copy(item.code)} title="Копировать код" className="me-2">
                       <i className="bi bi-copy" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline-danger"
+                      onClick={() => handleDeleteInvite(item)}
+                      disabled={item.is_used}
+                      title={item.is_used ? "Нельзя удалить использованный код" : "Удалить код"}
+                    >
+                      <i className="bi bi-trash" />
                     </Button>
                   </td>
                 </tr>
@@ -172,6 +206,20 @@ function AdminCodesContent({ logout, notify }) {
             </Button>
           </div>
         </div>
+        <Modal show={Boolean(inviteToDelete)} onHide={() => !isDeletingInvite && setInviteToDelete(null)} centered>
+          <Modal.Header closeButton={!isDeletingInvite}>
+            <Modal.Title>Подтверждение удаления</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>{inviteToDelete ? `Удалить инвайт-код ${inviteToDelete.code}?` : ""}</Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setInviteToDelete(null)} disabled={isDeletingInvite}>
+              Отмена
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteInvite} disabled={isDeletingInvite}>
+              {isDeletingInvite ? "Удаление..." : "Удалить"}
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </Card.Body>
     </Card>
   );
