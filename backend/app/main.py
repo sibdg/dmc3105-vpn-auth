@@ -50,7 +50,7 @@ from app.services import (
 )
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name)
+app = FastAPI(title="VPN Auth API")
 
 
 def parse_csv_setting(value: str) -> list[str]:

@@ -1,5 +1,50 @@
+import { Card } from "react-bootstrap";
 import GuidesAccordion from "../components/GuidesAccordion";
 
 export default function GuidePage() {
-  return <GuidesAccordion />;
+  return (
+    <div className="d-flex flex-column gap-3">
+      <Card>
+        <Card.Body>
+          <Card.Title>С чего начать?</Card.Title>
+          <p>
+            Это сервис для выдачи доступа в VPN (Hysteria 2). Пользователь регистрируется по одноразовому invite-коду,
+            подтверждает email и получает готовую ссылку подключения + QR-код для импорта в клиент.
+          </p>
+          <p className="mb-2">
+            Базовый сценарий для пользователя:
+          </p>
+          <ol className="mb-0">
+            <li>Открой страницу `Регистрация` и введи email.</li>
+            <li>Подтверди согласие на обработку персональных данных.</li>
+            <li>Получи код на email и подтверди его.</li>
+            <li>Введи имя, фамилию (опционально) и invite-код.</li>
+            <li>Перейди в `Данные подключения` и скопируй URI или отсканируй QR.</li>
+          </ol>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Body>
+          <Card.Title>Что есть на сайте</Card.Title>
+          <ul className="mb-0">
+            <li>
+              `Регистрация` — создание VPN-профиля через email + invite-код.
+            </li>
+            <li>
+              `Данные подключения` — твоя `hysteria2://` ссылка и QR-код.
+            </li>
+            <li>
+              `Удалить профиль` — удаление профиля по коду подтверждения из email.
+            </li>
+            <li>
+              `Согласие` — текст согласия на обработку персональных данных.
+            </li>
+          </ul>
+        </Card.Body>
+      </Card>
+
+      <GuidesAccordion />
+    </div>
+  );
 }

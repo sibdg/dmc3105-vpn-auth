@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "VPN Auth Service"
     api_prefix: str = "/api"
     # When nginx passes /vpn-auth/api/... instead of /api/... (misconfigured proxy_pass)
     proxy_path_prefix: str = ""

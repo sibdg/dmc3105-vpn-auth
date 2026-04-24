@@ -9,6 +9,8 @@ import DeleteProfilePage from "./pages/DeleteProfilePage";
 import GuidePage from "./pages/GuidePage";
 import RegistrationPage from "./pages/RegistrationPage";
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || "VPN Access Service";
+
 function Navigation() {
   const { pathname } = useLocation();
   return (
@@ -28,9 +30,9 @@ function Navigation() {
         as={Link}
         to="/guides"
         className="w-100 w-md-auto text-start text-md-center"
-        variant={pathname.startsWith("/guides") ? "info" : "outline-info"}
+        variant="danger"
       >
-        Гайды
+        С чего начать?
       </Button>
       <Button
         as={Link}
@@ -67,7 +69,7 @@ export default function App() {
   return (
     <>
       <Container className="py-4">
-        <h1 className="mb-4">VPN Access Service</h1>
+        <h1 className="mb-4">{APP_NAME}</h1>
         <Navigation />
         <Routes>
           <Route path="/" element={<RegistrationPage notify={notify} />} />

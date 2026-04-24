@@ -21,6 +21,7 @@ services:
         VITE_API_BASE: ${VITE_API_BASE:-/vpn-auth/api}
         VITE_ROUTER_BASENAME: ${VITE_ROUTER_BASENAME:-/vpn-auth}
         VITE_CSRF_COOKIE_NAME: vpn_admin_csrf
+        VITE_APP_NAME: ${VITE_APP_NAME:-VPN Auth Service}
         VITE_HYSTERIA_URI_TAG: ${VITE_HYSTERIA_URI_TAG:-VPN Auth}
     container_name: vpn-auth-frontend
     restart: unless-stopped
