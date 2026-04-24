@@ -4,6 +4,20 @@ const GUIDE_DATA = [
   {
     key: "android",
     title: "Android",
+    links: [
+      {
+        label: "Общая ссылка (может не работать без прокси)",
+        url: "https://hiddify.com/"
+      },
+      {
+        label: "GitHub Releases",
+        url: "https://github.com/hiddify/hiddify-app/releases/"
+      },
+      {
+        label: "Android (Google Play)",
+        url: "https://play.google.com/store/apps/details?id=app.hiddify.com"
+      }
+    ],
     steps: [
       "Установи Hiddify из Google Play или APK с официального сайта.",
       "Нажми Add profile и импортируй ссылку или QR.",
@@ -14,6 +28,16 @@ const GUIDE_DATA = [
   {
     key: "ios",
     title: "iOS",
+    links: [
+      {
+        label: "Общая ссылка (может не работать без прокси)",
+        url: "https://hiddify.com/"
+      },
+      {
+        label: "iOS (App Store)",
+        url: "https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532"
+      }
+    ],
     steps: [
       "Установи Hiddify из App Store.",
       "Добавь профиль через ссылку или QR.",
@@ -24,6 +48,16 @@ const GUIDE_DATA = [
   {
     key: "windows",
     title: "Windows",
+    links: [
+      {
+        label: "Общая ссылка (может не работать без прокси)",
+        url: "https://hiddify.com/"
+      },
+      {
+        label: "GitHub Releases",
+        url: "https://github.com/hiddify/hiddify-app/releases/"
+      }
+    ],
     steps: [
       "Скачай и установи Hiddify для Windows.",
       "Импортируй профиль по ссылке или QR.",
@@ -34,6 +68,16 @@ const GUIDE_DATA = [
   {
     key: "macos",
     title: "macOS",
+    links: [
+      {
+        label: "Общая ссылка (может не работать без прокси)",
+        url: "https://hiddify.com/"
+      },
+      {
+        label: "GitHub Releases",
+        url: "https://github.com/hiddify/hiddify-app/releases/"
+      }
+    ],
     steps: [
       "Установи Hiddify для macOS.",
       "Добавь профиль через URL или QR.",
@@ -44,6 +88,16 @@ const GUIDE_DATA = [
   {
     key: "linux",
     title: "Linux",
+    links: [
+      {
+        label: "Общая ссылка (может не работать без прокси)",
+        url: "https://hiddify.com/"
+      },
+      {
+        label: "GitHub Releases",
+        url: "https://github.com/hiddify/hiddify-app/releases/"
+      }
+    ],
     steps: [
       "Скачай сборку Hiddify для дистрибутива.",
       "Установи и запусти клиент.",
@@ -58,17 +112,24 @@ export default function GuidesAccordion() {
     <Card>
       <Card.Body>
         <Card.Title>Гайды по подключению</Card.Title>
-        <p>
-          Скачать клиент:{" "}
-          <a href="https://hiddify.com/app/" target="_blank" rel="noreferrer">
-            https://hiddify.com/app/
-          </a>
-        </p>
         <Accordion alwaysOpen>
           {GUIDE_DATA.map((guide) => (
             <Accordion.Item eventKey={guide.key} key={guide.key}>
               <Accordion.Header>{guide.title}</Accordion.Header>
               <Accordion.Body>
+                <p className="mb-2">
+                  Ссылки для скачивания:
+                </p>
+                <ul>
+                  {guide.links.map((link) => (
+                    <li key={`${guide.key}-${link.url}`}>
+                      {link.label}:{" "}
+                      <a href={link.url} target="_blank" rel="noreferrer">
+                        {link.url}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
                 <ol className="mb-0">
                   {guide.steps.map((step) => (
                     <li key={step}>{step}</li>

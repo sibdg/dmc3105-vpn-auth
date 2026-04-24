@@ -5,7 +5,8 @@ import AdminAuthGate from "../components/AdminAuthGate";
 
 function formatDate(value) {
   if (!value) return "-";
-  return new Date(value).toLocaleString();
+  const normalized = typeof value === "string" && !/[zZ]|[+-]\d{2}:\d{2}$/.test(value) ? `${value}Z` : value;
+  return new Date(normalized).toLocaleString();
 }
 
 function SortableHeader({ label, column, sortBy, sortDir, onClick }) {
