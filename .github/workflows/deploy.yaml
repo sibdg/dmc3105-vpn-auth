@@ -60,9 +60,5 @@ jobs:
               exit 1
             fi
 
-            # Деплой кода и перезапуск контейнеров
-            docker compose --env-file .env down --remove-orphans || true
-            docker compose --env-file .env up -d --build
-            
-            # Очистка старых образов
-            docker system prune -f
+            # Быстрый инкрементальный деплой с использованием layer cache
+            docker compose --env-file .env up -d --build --remove-orphans
