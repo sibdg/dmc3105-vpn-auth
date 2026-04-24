@@ -131,6 +131,13 @@ export function deleteInviteCode(code) {
   return request(`/admin/invite-codes/${encodeURIComponent(code)}`, { method: "DELETE" });
 }
 
+export function setInviteCodeTransferred(code, transferred) {
+  return request(`/admin/invite-codes/${encodeURIComponent(code)}/transfer-status`, {
+    method: "PATCH",
+    body: JSON.stringify({ transferred })
+  });
+}
+
 export function getUsers(params = {}) {
   const qs = new URLSearchParams(
     Object.entries(params)

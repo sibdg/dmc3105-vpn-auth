@@ -53,6 +53,8 @@ class InviteCodeOut(BaseModel):
     code: str
     created_at: datetime
     is_used: bool
+    is_transferred: bool
+    transferred_at: datetime | None
     used_at: datetime | None
     used_by_email: str | None
 
@@ -71,6 +73,10 @@ class UserOut(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class UpdateInviteTransferStatusRequest(BaseModel):
+    transferred: bool
 
 
 class PaginatedInviteCodesResponse(BaseModel):

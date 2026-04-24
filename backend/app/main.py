@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
@@ -21,6 +22,7 @@ from app.schemas import (
     RegisterRequest,
     RegisterResponse,
     RequestEmailCodeRequest,
+    UpdateInviteTransferStatusRequest,
     UserOut,
     VerifyEmailCodeRequest,
 )
@@ -79,9 +81,14 @@ def startup_event() -> None:
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
         inspector = inspect(conn)
-        columns = {column["name"] for column in inspector.get_columns("users")}
-        if "vpn_username" not in columns:
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        if "vpn_username" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN vpn_username VARCHAR(64)"))
+        invite_columns = {column["name"] for column in inspector.get_columns("invite_codes")}
+        if "is_transferred" not in invite_columns:
+            conn.execute(text("ALTER TABLE invite_codes ADD COLUMN is_transferred BOOLEAN NOT NULL DEFAULT 0"))
+        if "transferred_at" not in invite_columns:
+            conn.execute(text("ALTER TABLE invite_codes ADD COLUMN transferred_at DATETIME"))
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -126,8 +133,6 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
     )
     invite.is_used = True
     invite.used_by_email = payload.email
-    from datetime import datetime
-
     invite.used_at = datetime.utcnow()
     db.add(user)
     db.commit()
@@ -231,7 +236,9 @@ def list_invite_codes(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     status_filter: Literal["all", "used", "unused"] = Query(default="all"),
-    sort_by: Literal["code", "created_at", "used_at", "used_by_email", "is_used"] = Query(default="created_at"),
+    sort_by: Literal["code", "created_at", "used_at", "used_by_email", "is_used", "is_transferred", "transferred_at"] = Query(
+        default="created_at"
+    ),
     sort_dir: Literal["asc", "desc"] = Query(default="desc"),
     admin: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -247,6 +254,25 @@ def list_invite_codes(
     total = query.count()
     items = query.order_by(order).offset((page - 1) * page_size).limit(page_size).all()
     return PaginatedInviteCodesResponse(items=items, total=total, page=page, page_size=page_size)
+
+
+@app.patch(f"{settings.api_prefix}/admin/invite-codes/{{code}}/transfer-status", response_model=MessageResponse)
+def update_invite_transfer_status(
+    code: str,
+    payload: UpdateInviteTransferStatusRequest,
+    admin: str = Depends(get_current_admin),
+    _: None = Depends(validate_csrf),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    invite = db.query(InviteCode).filter(InviteCode.code == code).first()
+    if not invite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
+    invite.is_transferred = payload.transferred
+    invite.transferred_at = datetime.utcnow() if payload.transferred else None
+    db.commit()
+    action = "marked as transferred" if payload.transferred else "unmarked as transferred"
+    write_audit_log(db, "invite_code_transfer_status_updated", admin, f"Invite code {code} {action}")
+    return MessageResponse(message="Invite code transfer status updated")
 
 
 @app.delete(f"{settings.api_prefix}/admin/invite-codes/{{code}}", response_model=MessageResponse)

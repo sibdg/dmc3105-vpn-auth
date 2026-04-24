@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, Form, Modal, Table } from "react-bootstrap";
-import { createInviteCodes, deleteInviteCode, getInviteCodes } from "../api";
+import { createInviteCodes, deleteInviteCode, getInviteCodes, setInviteCodeTransferred } from "../api";
 import AdminAuthGate from "../components/AdminAuthGate";
 
 function formatDate(value) {
@@ -74,6 +74,17 @@ function AdminCodesContent({ logout, notify }) {
       return;
     }
     setInviteToDelete(item);
+  };
+
+  const toggleTransferred = async (item) => {
+    try {
+      const next = !item.is_transferred;
+      await setInviteCodeTransferred(item.code, next);
+      notify("success", next ? `Код ${item.code} помечен как переданный.` : `Метка передачи снята с кода ${item.code}.`);
+      await loadPage(1, sortBy, sortDir, statusFilter);
+    } catch (err) {
+      notify("danger", err.message);
+    }
   };
 
   const confirmDeleteInvite = async () => {
@@ -163,6 +174,7 @@ function AdminCodesContent({ logout, notify }) {
                 <SortableHeader label="Код" column="code" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("code")} />
                 <SortableHeader label="Статус" column="is_used" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("is_used")} />
                 <SortableHeader label="Email" column="used_by_email" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("used_by_email")} />
+                <SortableHeader label="Передан" column="is_transferred" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("is_transferred")} />
                 <SortableHeader label="Создан" column="created_at" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("created_at")} />
                 <SortableHeader label="Применен" column="used_at" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("used_at")} />
                 <th>Действие</th>
@@ -174,11 +186,21 @@ function AdminCodesContent({ logout, notify }) {
                   <td>{item.code}</td>
                   <td>{item.is_used ? <Badge bg="success">Использован</Badge> : <Badge bg="warning">Новый</Badge>}</td>
                   <td>{item.used_by_email || "-"}</td>
+                  <td>{item.is_transferred ? <Badge bg="info">Передан</Badge> : <Badge bg="secondary">Не передан</Badge>}</td>
                   <td>{formatDate(item.created_at)}</td>
                   <td>{formatDate(item.used_at)}</td>
                   <td>
                     <Button size="sm" variant="outline-primary" onClick={() => copy(item.code)} title="Копировать код" className="me-2">
                       <i className="bi bi-copy" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={item.is_transferred ? "outline-secondary" : "outline-success"}
+                      className="me-2"
+                      onClick={() => toggleTransferred(item)}
+                      title={item.is_transferred ? "Снять метку передачи" : "Пометить как переданный"}
+                    >
+                      <i className={item.is_transferred ? "bi bi-check2-square" : "bi bi-square"} />
                     </Button>
                     <Button
                       size="sm"
