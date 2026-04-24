@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Container } from "react-bootstrap";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import ToastCenter from "./components/ToastCenter";
@@ -15,29 +15,34 @@ function Navigation() {
   const { pathname } = useLocation();
   return (
     <div className="d-flex flex-column flex-md-row gap-2 mb-3">
-      <Button as={Link} to="/" className="w-100 w-md-auto text-start text-md-center" variant={pathname === "/" ? "primary" : "outline-primary"}>
-        Регистрация
-      </Button>
-      <Button
-        as={Link}
-        to="/connection"
-        className="w-100 w-md-auto text-start text-md-center"
-        variant={pathname === "/connection" ? "success" : "outline-success"}
-      >
-        Данные подключения
-      </Button>
       <Button
         as={Link}
         to="/guides"
-        className="w-100 w-md-auto text-start text-md-center"
+        className="w-100 w-md-auto text-start text-md-center order-1 order-md-3"
         variant="danger"
       >
         С чего начать?
       </Button>
       <Button
         as={Link}
+        to="/"
+        className="w-100 w-md-auto text-start text-md-center order-2 order-md-1"
+        variant={pathname === "/" ? "primary" : "outline-primary"}
+      >
+        Регистрация
+      </Button>
+      <Button
+        as={Link}
+        to="/connection"
+        className="w-100 w-md-auto text-start text-md-center order-3 order-md-2"
+        variant={pathname === "/connection" ? "success" : "outline-success"}
+      >
+        Данные подключения
+      </Button>
+      <Button
+        as={Link}
         to="/delete-profile"
-        className="w-100 w-md-auto text-start text-md-center"
+        className="w-100 w-md-auto text-start text-md-center order-4 order-md-4"
         variant={pathname === "/delete-profile" ? "danger" : "outline-danger"}
       >
         Удалить профиль
@@ -45,7 +50,7 @@ function Navigation() {
       <Button
         as={Link}
         to="/consent"
-        className="w-100 w-md-auto text-start text-md-center"
+        className="w-100 w-md-auto text-start text-md-center order-5 order-md-5"
         variant={pathname === "/consent" ? "secondary" : "outline-secondary"}
       >
         Согласие
@@ -56,6 +61,10 @@ function Navigation() {
 
 export default function App() {
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    document.title = APP_NAME;
+  }, []);
 
   const notify = (variant, message, autohide = true) => {
     const id = Date.now() + Math.random();

@@ -113,8 +113,14 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
         {step === 1 && (
           <Form onSubmit={handleRequestCode}>
             <Form.Group>
-              <Form.Label>Email для регистрации</Form.Label>
-              <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Form.Label>Email</Form.Label>
+              <Form.Control
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@mail.com"
+                required
+              />
             </Form.Group>
             <Form.Group className="mt-3">
               <Form.Check
@@ -148,13 +154,19 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
           <Form onSubmit={handleVerifyCode}>
             <Form.Group>
               <Form.Label>Код подтверждения из письма</Form.Label>
-              <Form.Control value={code} onChange={(e) => setCode(e.target.value)} required />
+              <Form.Control
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Например: 123456"
+                required
+              />
             </Form.Group>
-            <div className="d-flex gap-2 mt-3">
-              <Button variant="outline-secondary" type="button" onClick={() => setStep(1)}>
+            <div className="d-flex flex-column flex-md-row gap-2 mt-3">
+              <Button className="w-100 w-md-auto" variant="outline-secondary" type="button" onClick={() => setStep(1)}>
                 Изменить email
               </Button>
               <Button
+                className="w-100 w-md-auto"
                 type="button"
                 variant="outline-primary"
                 onClick={handleRequestCode}
@@ -166,7 +178,7 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
                     ? `Отправить код заново через ${resendSecondsLeft}с`
                     : "Отправить код заново"}
               </Button>
-              <Button type="submit">Подтвердить код</Button>
+              <Button className="w-100 w-md-auto" type="submit">Подтвердить код</Button>
             </div>
           </Form>
         )}
@@ -177,27 +189,41 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Имя</Form.Label>
-                  <Form.Control value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                  <Form.Control
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Например: Иван"
+                    required
+                  />
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Фамилия (опционально)</Form.Label>
-                  <Form.Control value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                  <Form.Label>Фамилия (необязательно)</Form.Label>
+                  <Form.Control
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Например: Иванов"
+                  />
                 </Form.Group>
               </Col>
               <Col md={12}>
                 <Form.Group>
                   <Form.Label>Код регистрации (одноразовый)</Form.Label>
-                  <Form.Control value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} required />
+                  <Form.Control
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value)}
+                    placeholder="Вставьте invite-код от администратора"
+                    required
+                  />
                 </Form.Group>
               </Col>
             </Row>
-            <div className="d-flex gap-2 mt-3">
-              <Button variant="outline-secondary" type="button" onClick={() => setStep(2)}>
+            <div className="d-flex flex-column flex-md-row gap-2 mt-3">
+              <Button className="w-100 w-md-auto" variant="outline-secondary" type="button" onClick={() => setStep(2)}>
                 Назад к коду
               </Button>
-              <Button type="submit" disabled={!canRegister}>Завершить регистрацию</Button>
+              <Button className="w-100 w-md-auto" type="submit" disabled={!canRegister}>Завершить регистрацию</Button>
             </div>
           </Form>
         )}
