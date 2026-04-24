@@ -1,0 +1,6 @@
+[Unit]
+Description=Reload Hysteria when config changes
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart hysteria-server.service

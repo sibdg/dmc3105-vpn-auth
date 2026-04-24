@@ -15,6 +15,23 @@ from app.config import get_settings
 from app.models import AuditLog, DeleteVerification, EmailVerification, InviteCode, User
 
 
+def reload_hysteria_service() -> None:
+    settings = get_settings()
+    command = settings.hysteria_reload_command.strip()
+    if not command:
+        return
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "unknown error"
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Failed to reload hysteria: "
+                f"{detail}. The command runs inside backend container."
+            ),
+        )
+
+
 def send_verification_email(email: str, code: str, *, subject: str = "Код подтверждения для VPN") -> None:
     settings = get_settings()
     if not settings.smtp_host or not settings.smtp_from:
@@ -190,9 +207,7 @@ def apply_hysteria_user(email: str, password: str) -> None:
     backup_path.write_text(original_raw, encoding="utf-8")
     path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
-    result = subprocess.run(settings.hysteria_reload_command, shell=True, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"Failed to reload hysteria: {result.stderr.strip()}")
+    reload_hysteria_service()
 
 
 def remove_hysteria_user(email: str) -> None:
@@ -211,9 +226,7 @@ def remove_hysteria_user(email: str) -> None:
     backup_path.write_text(original_raw, encoding="utf-8")
     path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
-    result = subprocess.run(settings.hysteria_reload_command, shell=True, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"Failed to reload hysteria: {result.stderr.strip()}")
+    reload_hysteria_service()
 
 
 def write_audit_log(db: Session, action: str, actor: str, details: str) -> None:

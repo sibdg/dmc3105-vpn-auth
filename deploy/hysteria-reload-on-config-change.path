@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch /etc/hysteria/config.yaml for changes
+
+[Path]
+PathChanged=/etc/hysteria/config.yaml
+Unit=hysteria-reload-on-config-change.service
+
+[Install]
+WantedBy=multi-user.target

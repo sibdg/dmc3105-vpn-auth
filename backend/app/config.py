@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     # When nginx passes /vpn-auth/api/... instead of /api/... (misconfigured proxy_pass)
     proxy_path_prefix: str = ""
 
-    database_url: str = "sqlite:///./vpn_auth.db"
+    # Keep SQLite inside /app/data volume in docker-compose
+    database_url: str = "sqlite:///./data/vpn_auth.db"
     secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 720
@@ -38,7 +39,8 @@ class Settings(BaseSettings):
     verify_request_cooldown_seconds: int = 60
 
     hysteria_config_path: str = "/etc/hysteria/config.yaml"
-    hysteria_reload_command: str = "systemctl restart hysteria-server.service"
+    # Runs inside backend container; leave empty to skip automatic reload.
+    hysteria_reload_command: str = ""
     hysteria_userpass_length: int = 32
 
     registration_base_url: str = "https://hs2.dmc3105.ru"
