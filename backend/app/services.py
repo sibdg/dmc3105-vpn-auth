@@ -15,6 +15,26 @@ from app.config import get_settings
 from app.models import AuditLog, DeleteVerification, EmailVerification, InviteCode, User
 
 
+def get_hysteria_config_path() -> Path:
+    settings = get_settings()
+    raw_path = (settings.hysteria_config_path or "").strip()
+    if not raw_path:
+        raise HTTPException(status_code=500, detail="HYSTERIA_CONFIG_PATH is empty")
+    path = Path(raw_path)
+    if not path.exists():
+        raise HTTPException(status_code=500, detail=f"Hysteria config not found at {path}")
+    if path.is_dir():
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"HYSTERIA_CONFIG_PATH points to directory ({path}), expected file. "
+                "Check backend/.env and docker bind mount "
+                "(HYSTERIA_CONFIG_HOST_PATH:HYSTERIA_CONFIG_CONTAINER_PATH)."
+            ),
+        )
+    return path
+
+
 def reload_hysteria_service() -> None:
     settings = get_settings()
     command = settings.hysteria_reload_command.strip()
@@ -190,10 +210,7 @@ def ensure_email_verified(db: Session, email: str) -> None:
 
 
 def apply_hysteria_user(email: str, password: str) -> None:
-    settings = get_settings()
-    path = Path(settings.hysteria_config_path)
-    if not path.exists():
-        raise HTTPException(status_code=500, detail=f"Hysteria config not found at {path}")
+    path = get_hysteria_config_path()
 
     original_raw = path.read_text(encoding="utf-8")
     config = yaml.safe_load(original_raw) or {}
@@ -211,10 +228,7 @@ def apply_hysteria_user(email: str, password: str) -> None:
 
 
 def remove_hysteria_user(email: str) -> None:
-    settings = get_settings()
-    path = Path(settings.hysteria_config_path)
-    if not path.exists():
-        raise HTTPException(status_code=500, detail=f"Hysteria config not found at {path}")
+    path = get_hysteria_config_path()
 
     original_raw = path.read_text(encoding="utf-8")
     config = yaml.safe_load(original_raw) or {}
