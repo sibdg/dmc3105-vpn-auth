@@ -117,7 +117,7 @@ UI пути:
 1. Админ генерирует одноразовые коды.
 2. Пользователь вводит email, получает код подтверждения.
 3. После подтверждения email проходит регистрацию по invite-коду.
-4. Backend добавляет `email: password` в `auth.userpass` файла Hysteria.
+4. Backend генерирует случайный URL-safe base64 логин и добавляет `vpn_username: password` в `auth.userpass` файла Hysteria.
 5. Backend перезапускает сервис Hysteria.
 6. Пользователь получает учетные данные VPN.
 

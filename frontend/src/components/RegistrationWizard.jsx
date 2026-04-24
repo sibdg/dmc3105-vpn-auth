@@ -106,7 +106,7 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
         {step === 1 && (
           <Form onSubmit={handleRequestCode}>
             <Form.Group>
-              <Form.Label>Email (будет логином)</Form.Label>
+              <Form.Label>Email для регистрации</Form.Label>
               <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </Form.Group>
             <div className="mt-3">

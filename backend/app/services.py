@@ -1,3 +1,4 @@
+import base64
 import secrets
 import socket
 import smtplib
@@ -98,6 +99,19 @@ def generate_verification_code() -> str:
 def generate_hysteria_password() -> str:
     settings = get_settings()
     return secrets.token_urlsafe(settings.hysteria_userpass_length)[: settings.hysteria_userpass_length]
+
+
+def generate_vpn_username() -> str:
+    # URL-safe base64 identifier without "=" padding for safe URI auth usage.
+    return base64.urlsafe_b64encode(secrets.token_bytes(12)).decode("ascii").rstrip("=")
+
+
+def generate_unique_vpn_username(db: Session) -> str:
+    while True:
+        candidate = generate_vpn_username()
+        exists = db.query(User.id).filter(User.vpn_username == candidate).first()
+        if not exists:
+            return candidate
 
 
 def create_email_verification(db: Session, email: str) -> str:
@@ -209,7 +223,7 @@ def ensure_email_verified(db: Session, email: str) -> None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is not verified")
 
 
-def apply_hysteria_user(email: str, password: str) -> None:
+def apply_hysteria_user(username: str, password: str) -> None:
     path = get_hysteria_config_path()
 
     original_raw = path.read_text(encoding="utf-8")
@@ -218,7 +232,7 @@ def apply_hysteria_user(email: str, password: str) -> None:
     auth = config.setdefault("auth", {})
     auth["type"] = "userpass"
     userpass_node = auth.setdefault("userpass", {})
-    userpass_node[email] = password
+    userpass_node[username] = password
 
     backup_path = path.with_suffix(path.suffix + ".bak")
     backup_path.write_text(original_raw, encoding="utf-8")
@@ -227,14 +241,14 @@ def apply_hysteria_user(email: str, password: str) -> None:
     reload_hysteria_service()
 
 
-def remove_hysteria_user(email: str) -> None:
+def remove_hysteria_user(username: str) -> None:
     path = get_hysteria_config_path()
 
     original_raw = path.read_text(encoding="utf-8")
     config = yaml.safe_load(original_raw) or {}
     userpass_node = config.get("auth", {}).get("userpass", {})
     if isinstance(userpass_node, dict):
-        userpass_node.pop(email, None)
+        userpass_node.pop(username, None)
 
     backup_path = path.with_suffix(path.suffix + ".bak")
     backup_path.write_text(original_raw, encoding="utf-8")

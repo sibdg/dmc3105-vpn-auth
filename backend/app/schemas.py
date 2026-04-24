@@ -31,7 +31,7 @@ class RegisterRequest(BaseModel):
 class RegisterResponse(BaseModel):
     message: str
     server: str
-    username: EmailStr
+    username: str
     password: str
 
 

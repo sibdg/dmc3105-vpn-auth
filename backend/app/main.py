@@ -2,6 +2,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -40,6 +41,7 @@ from app.services import (
     ensure_user_exists,
     generate_hysteria_password,
     generate_invite_code,
+    generate_unique_vpn_username,
     remove_hysteria_user,
     validate_invite_code,
     verify_delete_code,
@@ -75,6 +77,11 @@ if settings.proxy_path_prefix.strip():
 @app.on_event("startup")
 def startup_event() -> None:
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        inspector = inspect(conn)
+        columns = {column["name"] for column in inspector.get_columns("users")}
+        if "vpn_username" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN vpn_username VARCHAR(64)"))
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -105,11 +112,13 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
 
     ensure_email_verified(db, payload.email)
     invite = validate_invite_code(db, payload.invite_code)
+    vpn_username = generate_unique_vpn_username(db)
     hysteria_password = generate_hysteria_password()
-    apply_hysteria_user(payload.email, hysteria_password)
+    apply_hysteria_user(vpn_username, hysteria_password)
 
     user = User(
         email=payload.email,
+        vpn_username=vpn_username,
         first_name=payload.first_name,
         last_name=payload.last_name,
         hysteria_password=hysteria_password,
@@ -129,7 +138,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
     return RegisterResponse(
         message="Registration completed",
         server=settings.registration_base_url,
-        username=payload.email,
+        username=vpn_username,
         password=hysteria_password,
     )
 
@@ -189,7 +198,9 @@ def request_delete_code(payload: RequestEmailCodeRequest, db: Session = Depends(
 def delete_profile(payload: DeleteProfileRequest, db: Session = Depends(get_db)) -> MessageResponse:
     user = ensure_user_exists(db, payload.email)
     verify_delete_code(db, payload.email, payload.code)
-    remove_hysteria_user(payload.email)
+    if not user.vpn_username:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="VPN username is missing")
+    remove_hysteria_user(user.vpn_username)
     db.delete(user)
     db.commit()
     write_audit_log(db, "user_deleted_profile", payload.email, "Profile deleted by user confirmation code")
