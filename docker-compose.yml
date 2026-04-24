@@ -18,7 +18,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE: ${VITE_API_BASE:-https://api.dmc3105.ru/vpn-auth/api}
+        VITE_API_BASE: ${VITE_API_BASE:-/vpn-auth/api}
         VITE_ROUTER_BASENAME: ${VITE_ROUTER_BASENAME:-/vpn-auth}
         VITE_CSRF_COOKIE_NAME: vpn_admin_csrf
     container_name: vpn-auth-frontend
