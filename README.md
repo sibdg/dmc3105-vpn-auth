@@ -1,19 +1,68 @@
 # VPN Auth + Hysteria 2
 
-Сервис для выдачи доступов в Hysteria 2 через одноразовые регистрационные коды:
+Сервис выдачи доступов в Hysteria 2 через одноразовые invite-коды с email-подтверждением, админкой и авто-обновлением `auth.userpass`.
 
-- регистрация пользователя по `invite code`;
-- подтверждение email кодом из письма;
-- хранение имени/фамилии/email;
-- автодобавление логина и пароля в `hysteria` (`auth.userpass`);
-- админ-панель для генерации кодов и просмотра пользователей.
+## Что умеет
 
-## Стек
+- регистрация пользователя по invite-коду;
+- подтверждение email кодом;
+- генерация безопасного VPN-логина (URL-safe base64, не email);
+- создание/удаление пользователя в конфиге Hysteria;
+- страница подключения с URI и QR;
+- админка: создание/просмотр/удаление неиспользованных invite-кодов;
+- админка: просмотр и удаление пользователей (с подтверждением);
+- страница согласия на обработку персональных данных;
+- deploy через Docker Compose + GitHub Actions.
 
-- Backend: `FastAPI + SQLAlchemy + SQLite`
-- Frontend: `React + Bootstrap + Vite`
+## Структура env-файлов
 
-## 1) Backend
+В проекте специально разделены конфиги:
+
+- `./.env` — переменные `docker-compose` (порты, пути, frontend build args);
+- `./backend/.env` — backend runtime (секреты, SMTP, hysteria пути/команды);
+- `./frontend/.env` — frontend dev-переменные (Vite).
+
+Шаблоны:
+
+- `./.env.example`
+- `./backend/.env.example`
+- `./frontend/.env.example`
+
+## Быстрый старт на VPS (рекомендуется)
+
+Используй интерактивный идемпотентный скрипт:
+
+```bash
+cd /path/to/vpn-auth
+bash deploy/setup.sh
+```
+
+Что делает скрипт:
+
+- создает или перенастраивает `.env` / `backend/.env` / `frontend/.env`;
+- берет значения по умолчанию из `*.env.example` (Enter применяет default);
+- спрашивает параметры в порядке важности (сначала критичные);
+- при желании создает/обновляет systemd units для авто-перезапуска Hysteria по изменению `config.yaml`;
+- безопасно запускается повторно (idempotent).
+
+После настройки:
+
+```bash
+docker compose --env-file .env up -d --build --remove-orphans
+```
+
+## Systemd watcher для Hysteria (опционально)
+
+Скрипт может создать:
+
+- `/etc/systemd/system/hysteria-reload-on-config-change.service`
+- `/etc/systemd/system/hysteria-reload-on-config-change.path`
+
+`*.path` следит за изменениями `HYSTERIA_CONFIG_PATH` и запускает команду перезапуска.
+
+## Локальная разработка
+
+### Backend
 
 ```bash
 cd backend
@@ -22,24 +71,12 @@ python -m venv .venv
 source .venv/bin/activate
 # Windows PowerShell
 # .\.venv\Scripts\Activate.ps1
-
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-В `.env` обязательно задай:
-
-- `SECRET_KEY`
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD`
-- `SMTP_*` для отправки кода подтверждения
-- `SMTP_PORT=587` + `SMTP_USE_TLS=true` + `SMTP_USE_SSL=false` (обычно)
-- `SMTP_PORT=465` + `SMTP_USE_SSL=true` (implicit SSL)
-- `HYSTERIA_CONFIG_PATH` (обычно `/etc/hysteria/config.yaml`)
-- `HYSTERIA_RELOAD_COMMAND` (обычно `systemctl restart hysteria-server.service`)
-- `CORS_ALLOW_ORIGINS` (например `https://dmc3105.ru,https://hs2.dmc3105.ru`)
-
-## 2) Frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -48,82 +85,73 @@ cp .env.example .env
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-Для продакшена:
+## Ключевые переменные
 
-```bash
-npm run build
-```
+### `.env` (root)
 
-## Docker Compose deploy
+- `FRONTEND_HOST_PORT`
+- `BACKEND_HOST_PORT`
+- `HYSTERIA_CONFIG_HOST_PATH`
+- `HYSTERIA_CONFIG_CONTAINER_PATH`
+- `VITE_API_BASE`
+- `VITE_ROUTER_BASENAME`
+- `VITE_HYSTERIA_URI_TAG`
 
-В корне есть `docker-compose.yml` для деплоя backend + frontend:
+### `backend/.env`
 
-```bash
-docker compose up -d --build
-```
+- `SECRET_KEY`
+- `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+- `SMTP_*`
+- `HYSTERIA_CONFIG_PATH`
+- `HYSTERIA_RELOAD_COMMAND`
+- `REGISTRATION_BASE_URL`
+- `CORS_ALLOW_*`
 
-Сервисы:
+## API
 
-- `backend` (FastAPI, порт 8000 внутри сети docker)
-- `frontend` (Nginx + собранный React, порт `80`)
-
-Важно:
-
-- backend использует `./backend/.env` через `env_file`
-- SQLite хранится в docker volume `backend_data`
-- `.env` нужно один раз создать вручную на VPS, workflow его не перезаписывает
-
-Первичная подготовка на VPS:
-
-```bash
-cd /path/to/app
-cp backend/.env.example backend/.env
-# отредактируй backend/.env
-docker compose up -d --build
-```
-
-## API (основное)
+### Public
 
 - `POST /api/auth/request-email-code`
 - `POST /api/auth/verify-email-code`
 - `POST /api/register`
 - `POST /api/profile/request-delete-code`
 - `POST /api/profile/delete`
+
+### Admin
+
 - `POST /api/admin/login`
+- `POST /api/admin/logout`
+- `GET /api/admin/session`
 - `POST /api/admin/invite-codes`
 - `GET /api/admin/invite-codes`
+- `DELETE /api/admin/invite-codes/{code}` (только неиспользованные)
 - `GET /api/admin/users`
+- `DELETE /api/admin/users/{user_id}`
 
-UI пути:
+## UI маршруты
 
 - `/` — регистрация
-- `/connection` — данные подключения
-- `/delete-profile` — удаление профиля через код
-- `/admin` — админ-панель (без кнопки в основном меню)
-- `/admin/codes` — управление кодами
-- `/admin/users` — список пользователей
+- `/connection` — URI + QR для подключения
+- `/delete-profile` — удаление профиля по коду
+- `/consent` — согласие на обработку персональных данных
+- `/admin/codes` — админка кодов
+- `/admin/users` — админка пользователей
 
-## CORS без правок кода
+## Как работает регистрация
 
-Настраивается через `.env`:
+1. Пользователь вводит email и принимает согласие на обработку ПД.
+2. Получает и подтверждает email-код.
+3. Вводит invite-код и данные профиля.
+4. Backend генерирует VPN username (URL-safe base64) и пароль.
+5. Backend добавляет `vpn_username: password` в `auth.userpass` Hysteria.
+6. Пользователь получает готовую `hysteria2://` ссылку и QR.
 
-- `CORS_ALLOW_ORIGINS` — список origin через запятую или `*`
-- `CORS_ALLOW_METHODS` — список HTTP-методов или `*`
-- `CORS_ALLOW_HEADERS` — список заголовков или `*`
-- `CORS_ALLOW_CREDENTIALS` — `true/false`
+## GitHub Actions Deploy
 
-## Как это работает
+Workflow: `.github/workflows/deploy.yaml`
 
-1. Админ генерирует одноразовые коды.
-2. Пользователь вводит email, получает код подтверждения.
-3. После подтверждения email проходит регистрацию по invite-коду.
-4. Backend генерирует случайный URL-safe base64 логин и добавляет `vpn_username: password` в `auth.userpass` файла Hysteria.
-5. Backend перезапускает сервис Hysteria.
-6. Пользователь получает учетные данные VPN.
+- копирует проект на VPS;
+- проверяет, что `backend/.env` и root `.env` существуют;
+- выполняет `docker compose --env-file .env up -d --build --remove-orphans`.
 
-## Рекомендации по продакшену
-
-- Размести backend на том же VPS, где установлен Hysteria.
-- Запускай backend под пользователем с правом изменять `config.yaml` и перезапускать сервис.
-- Включи HTTPS для frontend и backend (Nginx/Caddy + Let's Encrypt).
-- Замени SQLite на PostgreSQL при росте нагрузки.
+Рекомендуемый путь: один раз запустить `deploy/setup.sh` на VPS, затем использовать автодеплой.
