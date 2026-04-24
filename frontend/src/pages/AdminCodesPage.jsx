@@ -97,8 +97,16 @@ function AdminCodesContent({ logout, notify }) {
           <Button
             onClick={async () => {
               try {
-                await createInviteCodes(Number(amount));
-                notify("success", "Коды созданы.");
+                const created = await createInviteCodes(Number(amount));
+                const codes = Array.isArray(created)
+                  ? created.map((item) => item?.code).filter(Boolean)
+                  : [];
+                if (codes.length > 0) {
+                  await navigator.clipboard.writeText(codes.join("\n"));
+                  notify("success", `Коды созданы и скопированы в буфер (${codes.length} шт.).`);
+                } else {
+                  notify("success", "Коды созданы.");
+                }
                 await loadPage(1);
               } catch (err) {
                 notify("danger", err.message);

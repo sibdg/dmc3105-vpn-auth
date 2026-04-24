@@ -10,7 +10,11 @@ export default function RegistrationPage({ notify }) {
   const navigate = useNavigate();
 
   const handleSuccess = (result) => {
-    localStorage.setItem(CONNECTION_KEY, JSON.stringify(result));
+    const normalized = {
+      ...result,
+      username: result?.vpn_username || result?.username || ""
+    };
+    localStorage.setItem(CONNECTION_KEY, JSON.stringify(normalized));
     notify("success", "Регистрация завершена.");
     navigate("/connection");
   };

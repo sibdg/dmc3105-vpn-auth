@@ -33,6 +33,7 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
       return 0;
     }
   });
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
 
   const emailIsValid = useMemo(() => /^\S+@\S+\.\S+$/.test(email), [email]);
   const canRegister = useMemo(() => Boolean(email && inviteCode && firstName), [email, inviteCode, firstName]);
@@ -56,6 +57,8 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
 
   const handleRequestCode = async (event) => {
     event.preventDefault();
+    if (isRequestingCode) return;
+    setIsRequestingCode(true);
     try {
       await requestEmailCode(email);
       notify("success", "Код подтверждения отправлен на почту.");
@@ -63,6 +66,8 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
       setStep(2);
     } catch (err) {
       notify("danger", err.message);
+    } finally {
+      setIsRequestingCode(false);
     }
   };
 
@@ -110,8 +115,12 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
               <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </Form.Group>
             <div className="mt-3">
-              <Button type="submit" disabled={!emailIsValid || resendSecondsLeft > 0}>
-                {resendSecondsLeft > 0 ? `Отправить код через ${resendSecondsLeft}с` : "Отправить код"}
+              <Button type="submit" disabled={isRequestingCode || !emailIsValid || resendSecondsLeft > 0}>
+                {isRequestingCode
+                  ? "Отправка..."
+                  : resendSecondsLeft > 0
+                    ? `Отправить код через ${resendSecondsLeft}с`
+                    : "Отправить код"}
               </Button>
             </div>
           </Form>
@@ -127,8 +136,17 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
               <Button variant="outline-secondary" type="button" onClick={() => setStep(1)}>
                 Изменить email
               </Button>
-              <Button type="button" variant="outline-primary" onClick={handleRequestCode} disabled={resendSecondsLeft > 0}>
-                {resendSecondsLeft > 0 ? `Отправить код заново через ${resendSecondsLeft}с` : "Отправить код заново"}
+              <Button
+                type="button"
+                variant="outline-primary"
+                onClick={handleRequestCode}
+                disabled={isRequestingCode || resendSecondsLeft > 0}
+              >
+                {isRequestingCode
+                  ? "Отправка..."
+                  : resendSecondsLeft > 0
+                    ? `Отправить код заново через ${resendSecondsLeft}с`
+                    : "Отправить код заново"}
               </Button>
               <Button type="submit">Подтвердить код</Button>
             </div>

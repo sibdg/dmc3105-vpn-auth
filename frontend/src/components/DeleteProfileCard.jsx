@@ -17,6 +17,7 @@ export default function DeleteProfileCard({ notify }) {
       return 0;
     }
   });
+  const [isRequestingDeleteCode, setIsRequestingDeleteCode] = useState(false);
 
   const emailIsValid = useMemo(() => /^\S+@\S+\.\S+$/.test(email), [email]);
   const resendSecondsLeft = Math.max(0, Math.ceil((resendAvailableAt - nowTs) / 1000));
@@ -34,12 +35,16 @@ export default function DeleteProfileCard({ notify }) {
 
   const handleRequestDeleteCode = async (event) => {
     event.preventDefault();
+    if (isRequestingDeleteCode) return;
+    setIsRequestingDeleteCode(true);
     try {
       await requestDeleteCode(email);
       notify("success", "Код удаления отправлен на почту.");
       startCooldown();
     } catch (err) {
       notify("danger", err.message);
+    } finally {
+      setIsRequestingDeleteCode(false);
     }
   };
 
@@ -64,8 +69,17 @@ export default function DeleteProfileCard({ notify }) {
             <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </Form.Group>
           <div className="mb-3">
-            <Button type="button" variant="outline-danger" onClick={handleRequestDeleteCode} disabled={!emailIsValid || resendSecondsLeft > 0}>
-              {resendSecondsLeft > 0 ? `Отправить код через ${resendSecondsLeft}с` : "Отправить код удаления"}
+            <Button
+              type="button"
+              variant="outline-danger"
+              onClick={handleRequestDeleteCode}
+              disabled={isRequestingDeleteCode || !emailIsValid || resendSecondsLeft > 0}
+            >
+              {isRequestingDeleteCode
+                ? "Отправка..."
+                : resendSecondsLeft > 0
+                  ? `Отправить код через ${resendSecondsLeft}с`
+                  : "Отправить код удаления"}
             </Button>
           </div>
           <Form.Group className="mb-3">
