@@ -12,17 +12,40 @@ import RegistrationPage from "./pages/RegistrationPage";
 function Navigation() {
   const { pathname } = useLocation();
   return (
-    <div className="d-flex flex-wrap gap-2 mb-3">
-      <Button as={Link} to="/" variant={pathname === "/" ? "primary" : "outline-primary"}>
+    <div className="d-flex flex-column flex-md-row gap-2 mb-3">
+      <Button as={Link} to="/" className="w-100 w-md-auto text-start text-md-center" variant={pathname === "/" ? "primary" : "outline-primary"}>
         Регистрация
       </Button>
-      <Button as={Link} to="/connection" variant={pathname === "/connection" ? "success" : "outline-success"}>
+      <Button
+        as={Link}
+        to="/connection"
+        className="w-100 w-md-auto text-start text-md-center"
+        variant={pathname === "/connection" ? "success" : "outline-success"}
+      >
         Данные подключения
       </Button>
-      <Button as={Link} to="/delete-profile" variant={pathname === "/delete-profile" ? "danger" : "outline-danger"}>
+      <Button
+        as={Link}
+        to="/guides"
+        className="w-100 w-md-auto text-start text-md-center"
+        variant={pathname.startsWith("/guides") ? "info" : "outline-info"}
+      >
+        Гайды
+      </Button>
+      <Button
+        as={Link}
+        to="/delete-profile"
+        className="w-100 w-md-auto text-start text-md-center"
+        variant={pathname === "/delete-profile" ? "danger" : "outline-danger"}
+      >
         Удалить профиль
       </Button>
-      <Button as={Link} to="/consent" variant={pathname === "/consent" ? "secondary" : "outline-secondary"}>
+      <Button
+        as={Link}
+        to="/consent"
+        className="w-100 w-md-auto text-start text-md-center"
+        variant={pathname === "/consent" ? "secondary" : "outline-secondary"}
+      >
         Согласие
       </Button>
     </div>
@@ -51,7 +74,8 @@ export default function App() {
           <Route path="/connection" element={<ConnectionPage notify={notify} />} />
           <Route path="/delete-profile" element={<DeleteProfilePage notify={notify} />} />
           <Route path="/consent" element={<ConsentPage />} />
-          <Route path="/guides/:os" element={<GuidePage />} />
+          <Route path="/guides" element={<GuidePage />} />
+          <Route path="/guides/:os" element={<Navigate to="/guides" replace />} />
           <Route path="/admin/*" element={<AdminPage notify={notify} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

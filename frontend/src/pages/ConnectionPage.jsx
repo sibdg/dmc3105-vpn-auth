@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Card, Form } from "react-bootstrap";
 import { QRCodeCanvas } from "qrcode.react";
+import GuidesAccordion from "../components/GuidesAccordion";
 
 const CONNECTION_KEY = "vpn_connection_data";
 const HYSTERIA_URI_TAG = import.meta.env.VITE_HYSTERIA_URI_TAG || "VPN Auth";
@@ -70,36 +71,39 @@ export default function ConnectionPage({ notify }) {
   };
 
   return (
-    <Card>
-      <Card.Body>
-        <Card.Title>Данные подключения</Card.Title>
-        {!data ? (
-          <p className="mb-0">Нет данных подключения. Заверши регистрацию.</p>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            <div>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <strong>URI для импорта в Hiddify</strong>
-                <Button size="sm" variant="outline-primary" onClick={() => copy(buildHysteriaUri(data), "Hysteria URI")}>
-                  <i className="bi bi-copy me-1" />
-                  Скопировать URI
-                </Button>
+    <div className="d-flex flex-column gap-3">
+      <Card>
+        <Card.Body>
+          <Card.Title>Данные подключения</Card.Title>
+          {!data ? (
+            <p className="mb-0">Нет данных подключения. Заверши регистрацию.</p>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              <div>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <strong>URI для импорта в Hiddify</strong>
+                  <Button size="sm" variant="outline-primary" onClick={() => copy(buildHysteriaUri(data), "Hysteria URI")}>
+                    <i className="bi bi-copy me-1" />
+                    Скопировать URI
+                  </Button>
+                </div>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  readOnly
+                  value={buildHysteriaUri(data)}
+                  style={{ fontFamily: "monospace" }}
+                />
               </div>
-              <Form.Control
-                as="textarea"
-                rows={2}
-                readOnly
-                value={buildHysteriaUri(data)}
-                style={{ fontFamily: "monospace" }}
-              />
+              <div className="d-flex flex-column align-items-center">
+                <strong className="mb-2">QR для быстрого подключения</strong>
+                <QRCodeCanvas value={buildHysteriaUri(data)} size={220} includeMargin />
+              </div>
             </div>
-            <div className="d-flex flex-column align-items-center">
-              <strong className="mb-2">QR для быстрого подключения</strong>
-              <QRCodeCanvas value={buildHysteriaUri(data)} size={220} includeMargin />
-            </div>
-          </div>
-        )}
-      </Card.Body>
-    </Card>
+          )}
+        </Card.Body>
+      </Card>
+      <GuidesAccordion />
+    </div>
   );
 }
