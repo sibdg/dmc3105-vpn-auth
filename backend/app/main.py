@@ -22,7 +22,7 @@ from app.schemas import (
     RegisterRequest,
     RegisterResponse,
     RequestEmailCodeRequest,
-    UpdateInviteTransferStatusRequest,
+    UpdateInviteDeliveryStatusRequest,
     UserOut,
     VerifyEmailCodeRequest,
 )
@@ -85,10 +85,19 @@ def startup_event() -> None:
         if "vpn_username" not in user_columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN vpn_username VARCHAR(64)"))
         invite_columns = {column["name"] for column in inspector.get_columns("invite_codes")}
-        if "is_transferred" not in invite_columns:
-            conn.execute(text("ALTER TABLE invite_codes ADD COLUMN is_transferred BOOLEAN NOT NULL DEFAULT 0"))
         if "transferred_at" not in invite_columns:
             conn.execute(text("ALTER TABLE invite_codes ADD COLUMN transferred_at DATETIME"))
+        if "is_hidden" not in invite_columns:
+            conn.execute(text("ALTER TABLE invite_codes ADD COLUMN is_hidden BOOLEAN NOT NULL DEFAULT 0"))
+        if "delivery_status" not in invite_columns:
+            conn.execute(text("ALTER TABLE invite_codes ADD COLUMN delivery_status VARCHAR(20) NOT NULL DEFAULT 'new'"))
+            if "is_transferred" in invite_columns:
+                conn.execute(text("UPDATE invite_codes SET delivery_status = 'transferred' WHERE is_transferred"))
+        if "is_transferred" in invite_columns:
+            try:
+                conn.execute(text("ALTER TABLE invite_codes DROP COLUMN is_transferred"))
+            except Exception:
+                pass
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -235,44 +244,66 @@ def create_invite_codes(
 def list_invite_codes(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    status_filter: Literal["all", "used", "unused"] = Query(default="all"),
-    sort_by: Literal["code", "created_at", "used_at", "used_by_email", "is_used", "is_transferred", "transferred_at"] = Query(
-        default="created_at"
-    ),
+    status_filter: Literal["all", "used", "unused", "unused_new", "unused_transferred"] = Query(default="all"),
+    sort_by: Literal[
+        "code",
+        "created_at",
+        "used_at",
+        "used_by_email",
+        "is_used",
+        "delivery_status",
+        "transferred_at",
+        "code_status",
+    ] = Query(default="created_at"),
     sort_dir: Literal["asc", "desc"] = Query(default="desc"),
     admin: str = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ) -> PaginatedInviteCodesResponse:
     _ = admin
-    sort_column = getattr(InviteCode, sort_by)
-    order = sort_column.desc() if sort_dir == "desc" else sort_column.asc()
-    query = db.query(InviteCode)
+    query = db.query(InviteCode).filter(InviteCode.is_hidden.is_(False))
     if status_filter == "used":
         query = query.filter(InviteCode.is_used.is_(True))
     elif status_filter == "unused":
         query = query.filter(InviteCode.is_used.is_(False))
+    elif status_filter == "unused_new":
+        query = query.filter(InviteCode.is_used.is_(False), InviteCode.delivery_status == "new")
+    elif status_filter == "unused_transferred":
+        query = query.filter(InviteCode.is_used.is_(False), InviteCode.delivery_status == "transferred")
+
     total = query.count()
-    items = query.order_by(order).offset((page - 1) * page_size).limit(page_size).all()
+    if sort_by == "code_status":
+        u = InviteCode.is_used.desc() if sort_dir == "desc" else InviteCode.is_used.asc()
+        d = InviteCode.delivery_status.desc() if sort_dir == "desc" else InviteCode.delivery_status.asc()
+        items = query.order_by(u, d).offset((page - 1) * page_size).limit(page_size).all()
+    else:
+        sort_column = getattr(InviteCode, sort_by)
+        order = sort_column.desc() if sort_dir == "desc" else sort_column.asc()
+        items = query.order_by(order).offset((page - 1) * page_size).limit(page_size).all()
     return PaginatedInviteCodesResponse(items=items, total=total, page=page, page_size=page_size)
 
 
-@app.patch(f"{settings.api_prefix}/admin/invite-codes/{{code}}/transfer-status", response_model=MessageResponse)
-def update_invite_transfer_status(
+@app.patch(f"{settings.api_prefix}/admin/invite-codes/{{code}}/delivery-status", response_model=MessageResponse)
+def update_invite_delivery_status(
     code: str,
-    payload: UpdateInviteTransferStatusRequest,
+    payload: UpdateInviteDeliveryStatusRequest,
     admin: str = Depends(get_current_admin),
     _: None = Depends(validate_csrf),
     db: Session = Depends(get_db),
 ) -> MessageResponse:
-    invite = db.query(InviteCode).filter(InviteCode.code == code).first()
+    invite = db.query(InviteCode).filter(InviteCode.code == code, InviteCode.is_hidden.is_(False)).first()
     if not invite:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
-    invite.is_transferred = payload.transferred
-    invite.transferred_at = datetime.utcnow() if payload.transferred else None
+    if invite.is_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change delivery status of used invite code",
+        )
+    invite.delivery_status = payload.delivery_status
+    invite.transferred_at = datetime.utcnow() if payload.delivery_status == "transferred" else None
     db.commit()
-    action = "marked as transferred" if payload.transferred else "unmarked as transferred"
-    write_audit_log(db, "invite_code_transfer_status_updated", admin, f"Invite code {code} {action}")
-    return MessageResponse(message="Invite code transfer status updated")
+    action = "delivery new" if payload.delivery_status == "new" else "delivery transferred"
+    write_audit_log(db, "invite_code_delivery_status_updated", admin, f"Invite code {code} set to {action}")
+    return MessageResponse(message="Invite code status updated")
 
 
 @app.delete(f"{settings.api_prefix}/admin/invite-codes/{{code}}", response_model=MessageResponse)
@@ -282,15 +313,13 @@ def delete_invite_code(
     _: None = Depends(validate_csrf),
     db: Session = Depends(get_db),
 ) -> MessageResponse:
-    invite = db.query(InviteCode).filter(InviteCode.code == code).first()
+    invite = db.query(InviteCode).filter(InviteCode.code == code, InviteCode.is_hidden.is_(False)).first()
     if not invite:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
-    if invite.is_used:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete used invite code")
-    db.delete(invite)
+    invite.is_hidden = True
     db.commit()
-    write_audit_log(db, "invite_code_deleted", admin, f"Deleted invite code {code}")
-    return MessageResponse(message="Invite code deleted")
+    write_audit_log(db, "invite_code_hidden", admin, f"Invite code {code} hidden from admin list")
+    return MessageResponse(message="Invite code hidden from list")
 
 
 @app.get(f"{settings.api_prefix}/admin/users", response_model=PaginatedUsersResponse)

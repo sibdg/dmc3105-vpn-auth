@@ -2,6 +2,12 @@ import { useState } from "react";
 import { Badge, Button, Card, Col, Form, Row, Table } from "react-bootstrap";
 import { adminLogin, createInviteCodes, getInviteCodes, getUsers } from "../api";
 
+function inviteCodeStatus(item) {
+  if (item.code_status) return item.code_status;
+  if (item.is_used) return "used";
+  return item.is_transferred ? "transferred" : "new";
+}
+
 export default function AdminPanel({ notify }) {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
@@ -15,9 +21,14 @@ export default function AdminPanel({ notify }) {
     try {
       const data = await adminLogin(username, password);
       setToken(data.access_token);
-      const [codes, userList] = await Promise.all([getInviteCodes(data.access_token), getUsers(data.access_token)]);
+      const [codesRes, userList] = await Promise.all([
+        getInviteCodes({ page: 1, page_size: 500 }),
+        getUsers({ page: 1, page_size: 500 })
+      ]);
+      const codes = Array.isArray(codesRes?.items) ? codesRes.items : Array.isArray(codesRes) ? codesRes : [];
+      const users = Array.isArray(userList?.items) ? userList.items : Array.isArray(userList) ? userList : [];
       setInviteCodes(codes);
-      setUsers(userList);
+      setUsers(users);
       notify("success", "Вход в админ-панель выполнен, данные загружены.");
     } catch (err) {
       notify("danger", err.message);
@@ -26,9 +37,14 @@ export default function AdminPanel({ notify }) {
 
   const refreshData = async () => {
     try {
-      const [codes, userList] = await Promise.all([getInviteCodes(token), getUsers(token)]);
+      const [codesRes, userList] = await Promise.all([
+        getInviteCodes({ page: 1, page_size: 500 }),
+        getUsers({ page: 1, page_size: 500 })
+      ]);
+      const codes = Array.isArray(codesRes?.items) ? codesRes.items : Array.isArray(codesRes) ? codesRes : [];
+      const users = Array.isArray(userList?.items) ? userList.items : Array.isArray(userList) ? userList : [];
       setInviteCodes(codes);
-      setUsers(userList);
+      setUsers(users);
       notify("info", "Списки обновлены.");
     } catch (err) {
       notify("danger", err.message);
@@ -37,7 +53,7 @@ export default function AdminPanel({ notify }) {
 
   const handleCreateCodes = async () => {
     try {
-      await createInviteCodes(Number(amount), token);
+      await createInviteCodes(Number(amount));
       notify("success", "Коды успешно созданы.");
       await refreshData();
     } catch (err) {
@@ -98,7 +114,15 @@ export default function AdminPanel({ notify }) {
                     {inviteCodes.map((item) => (
                       <tr key={item.code}>
                         <td>{item.code}</td>
-                        <td>{item.is_used ? <Badge bg="success">Использован</Badge> : <Badge bg="warning">Новый</Badge>}</td>
+                        <td>
+                          {inviteCodeStatus(item) === "used" ? (
+                            <Badge bg="success">Использован</Badge>
+                          ) : inviteCodeStatus(item) === "transferred" ? (
+                            <Badge bg="info">Передан</Badge>
+                          ) : (
+                            <Badge bg="warning">Новый</Badge>
+                          )}
+                        </td>
                         <td>{item.used_by_email || "-"}</td>
                       </tr>
                     ))}

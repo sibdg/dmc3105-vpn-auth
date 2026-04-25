@@ -14,10 +14,12 @@ class InviteCode(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     created_by: Mapped[str] = mapped_column(String(128), default="admin", nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    is_transferred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    """Для неиспользованных кодов: new | transferred. Для использованных не меняется."""
+    delivery_status: Mapped[str] = mapped_column(String(20), default="new", nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     transferred_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     used_by_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class User(Base):

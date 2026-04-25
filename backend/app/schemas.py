@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
 
 class HealthResponse(BaseModel):
@@ -50,16 +51,22 @@ class CreateInviteCodesRequest(BaseModel):
 
 
 class InviteCodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     code: str
     created_at: datetime
     is_used: bool
-    is_transferred: bool
+    delivery_status: Literal["new", "transferred"]
     transferred_at: datetime | None
     used_at: datetime | None
     used_by_email: str | None
 
-    class Config:
-        from_attributes = True
+    @computed_field
+    @property
+    def code_status(self) -> Literal["new", "transferred", "used"]:
+        if self.is_used:
+            return "used"
+        return self.delivery_status
 
 
 class UserOut(BaseModel):
@@ -75,8 +82,8 @@ class MessageResponse(BaseModel):
     message: str
 
 
-class UpdateInviteTransferStatusRequest(BaseModel):
-    transferred: bool
+class UpdateInviteDeliveryStatusRequest(BaseModel):
+    delivery_status: Literal["new", "transferred"]
 
 
 class PaginatedInviteCodesResponse(BaseModel):

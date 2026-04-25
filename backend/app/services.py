@@ -263,7 +263,7 @@ def write_audit_log(db: Session, action: str, actor: str, details: str) -> None:
 
 
 def validate_invite_code(db: Session, code: str) -> InviteCode:
-    invite = db.query(InviteCode).filter(InviteCode.code == code).first()
+    invite = db.query(InviteCode).filter(InviteCode.code == code, InviteCode.is_hidden.is_(False)).first()
     if not invite:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite code not found")
     if invite.is_used:

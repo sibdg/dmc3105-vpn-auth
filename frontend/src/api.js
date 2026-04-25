@@ -131,10 +131,10 @@ export function deleteInviteCode(code) {
   return request(`/admin/invite-codes/${encodeURIComponent(code)}`, { method: "DELETE" });
 }
 
-export function setInviteCodeTransferred(code, transferred) {
-  return request(`/admin/invite-codes/${encodeURIComponent(code)}/transfer-status`, {
+export function setInviteCodeDeliveryStatus(code, deliveryStatus) {
+  return request(`/admin/invite-codes/${encodeURIComponent(code)}/delivery-status`, {
     method: "PATCH",
-    body: JSON.stringify({ transferred })
+    body: JSON.stringify({ delivery_status: deliveryStatus })
   });
 }
 

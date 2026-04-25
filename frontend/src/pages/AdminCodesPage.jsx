@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, Form, Modal, OverlayTrigger, Table, Tooltip } from "react-bootstrap";
-import { createInviteCodes, deleteInviteCode, getInviteCodes, setInviteCodeTransferred } from "../api";
+import { createInviteCodes, deleteInviteCode, getInviteCodes, setInviteCodeDeliveryStatus } from "../api";
 import AdminAuthGate from "../components/AdminAuthGate";
 
 function formatDate(value) {
@@ -24,6 +24,20 @@ function isNarrowScreenForShare() {
   if (typeof window === "undefined") return false;
   /* Совпадает с Bootstrap md: как у сетки кнопок до d-md-flex */
   return window.matchMedia("(max-width: 767.98px)").matches;
+}
+
+function inviteRowCodeStatus(item) {
+  if (item.code_status) return item.code_status;
+  if (item.is_used) return "used";
+  if (item.delivery_status === "transferred") return "transferred";
+  return item.is_transferred ? "transferred" : "new";
+}
+
+function InviteStatusBadge({ item }) {
+  const s = inviteRowCodeStatus(item);
+  if (s === "used") return <Badge bg="success">Использован</Badge>;
+  if (s === "transferred") return <Badge bg="info">Передан</Badge>;
+  return <Badge bg="warning">Новый</Badge>;
 }
 
 function ActionTooltip({ id, label, children }) {
@@ -118,20 +132,21 @@ function AdminCodesContent({ logout, notify }) {
     }
   };
 
-  const handleDeleteInvite = async (item) => {
-    if (item.is_used) {
-      notify("warning", "Можно удалять только неактивированные коды.");
-      return;
-    }
+  const handleDeleteInvite = (item) => {
     setInviteToDelete(item);
   };
 
-  const toggleTransferred = async (item) => {
+  const toggleDeliveryStatus = async (item) => {
+    const current = inviteRowCodeStatus(item);
+    if (current === "used") return;
+    const next = current === "transferred" ? "new" : "transferred";
     try {
-      const next = !item.is_transferred;
-      await setInviteCodeTransferred(item.code, next);
-      notify("success", next ? `Код ${item.code} помечен как переданный.` : `Метка передачи снята с кода ${item.code}.`);
-      await loadPage(1, sortBy, sortDir, statusFilter);
+      await setInviteCodeDeliveryStatus(item.code, next);
+      notify(
+        "success",
+        next === "transferred" ? `Код ${item.code} в статусе «Передан».` : `Код ${item.code} в статусе «Новый».`
+      );
+      await loadPage(page, sortBy, sortDir, statusFilter);
     } catch (err) {
       notify("danger", err.message);
     }
@@ -142,7 +157,7 @@ function AdminCodesContent({ logout, notify }) {
     setIsDeletingInvite(true);
     try {
       await deleteInviteCode(inviteToDelete.code);
-      notify("success", `Инвайт-код ${inviteToDelete.code} удален.`);
+      notify("success", `Инвайт-код ${inviteToDelete.code} скрыт из списка.`);
       setInviteToDelete(null);
       await loadPage(1, sortBy, sortDir, statusFilter);
     } catch (err) {
@@ -213,7 +228,9 @@ function AdminCodesContent({ logout, notify }) {
           >
             <option value="all">Все статусы</option>
             <option value="used">Только использованные</option>
-            <option value="unused">Только новые</option>
+            <option value="unused">Неиспользованные (все)</option>
+            <option value="unused_new">Неиспользованные — «Новый»</option>
+            <option value="unused_transferred">Неиспользованные — «Передан»</option>
           </Form.Select>
         </div>
 
@@ -222,9 +239,8 @@ function AdminCodesContent({ logout, notify }) {
             <thead>
               <tr>
                 <SortableHeader label="Код" column="code" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("code")} />
-                <SortableHeader label="Статус" column="is_used" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("is_used")} />
+                <SortableHeader label="Статус" column="code_status" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("code_status")} />
                 <SortableHeader label="Email" column="used_by_email" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("used_by_email")} />
-                <SortableHeader label="Передан" column="is_transferred" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("is_transferred")} />
                 <SortableHeader label="Создан" column="created_at" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("created_at")} />
                 <SortableHeader label="Применен" column="used_at" sortBy={sortBy} sortDir={sortDir} onClick={() => handleSort("used_at")} />
                 <th>Действие</th>
@@ -234,9 +250,10 @@ function AdminCodesContent({ logout, notify }) {
               {rows.map((item) => (
                 <tr key={item.code}>
                   <td>{item.code}</td>
-                  <td>{item.is_used ? <Badge bg="success">Использован</Badge> : <Badge bg="warning">Новый</Badge>}</td>
+                  <td>
+                    <InviteStatusBadge item={item} />
+                  </td>
                   <td>{item.used_by_email || "-"}</td>
-                  <td>{item.is_transferred ? <Badge bg="info">Передан</Badge> : <Badge bg="secondary">Не передан</Badge>}</td>
                   <td>{formatDate(item.created_at)}</td>
                   <td>{formatDate(item.used_at)}</td>
                   <td>
@@ -256,30 +273,38 @@ function AdminCodesContent({ logout, notify }) {
                       </ActionTooltip>
                       <ActionTooltip
                         id={`invite-del-${item.code}`}
-                        label={item.is_used ? "Нельзя удалить уже использованный код" : "Удалить неиспользованный код"}
+                        label="Скрыть код из списка (строка останется в базе; неиспользованный код станет недоступен для регистрации)"
                       >
                         <span className="d-inline-block">
-                          <Button
-                            size="sm"
-                            variant="outline-danger"
-                            onClick={() => handleDeleteInvite(item)}
-                            disabled={item.is_used}
-                          >
+                          <Button size="sm" variant="outline-danger" onClick={() => handleDeleteInvite(item)}>
                             <i className="bi bi-trash" />
                           </Button>
                         </span>
                       </ActionTooltip>
                       <ActionTooltip
                         id={`invite-tr-${item.code}`}
-                        label={item.is_transferred ? "Снять отметку «код передан получателю»" : "Отметить, что код передан получателю"}
+                        label={
+                          inviteRowCodeStatus(item) === "used"
+                            ? "Статус использованного кода нельзя менять"
+                            : inviteRowCodeStatus(item) === "transferred"
+                              ? "Переключить в статус «Новый»"
+                              : "Переключить в статус «Передан»"
+                        }
                       >
-                        <Button
-                          size="sm"
-                          variant={item.is_transferred ? "outline-secondary" : "outline-success"}
-                          onClick={() => toggleTransferred(item)}
-                        >
-                          <i className={item.is_transferred ? "bi bi-check2-square" : "bi bi-square"} />
-                        </Button>
+                        <span className="d-inline-block">
+                          <Button
+                            size="sm"
+                            variant={inviteRowCodeStatus(item) === "transferred" ? "outline-secondary" : "outline-success"}
+                            onClick={() => toggleDeliveryStatus(item)}
+                            disabled={inviteRowCodeStatus(item) === "used"}
+                          >
+                            <i
+                              className={
+                                inviteRowCodeStatus(item) === "transferred" ? "bi bi-check2-square" : "bi bi-square"
+                              }
+                            />
+                          </Button>
+                        </span>
                       </ActionTooltip>
                     </div>
                   </td>
@@ -302,15 +327,19 @@ function AdminCodesContent({ logout, notify }) {
         </div>
         <Modal show={Boolean(inviteToDelete)} onHide={() => !isDeletingInvite && setInviteToDelete(null)} centered>
           <Modal.Header closeButton={!isDeletingInvite}>
-            <Modal.Title>Подтверждение удаления</Modal.Title>
+            <Modal.Title>Скрыть из списка</Modal.Title>
           </Modal.Header>
-          <Modal.Body>{inviteToDelete ? `Удалить инвайт-код ${inviteToDelete.code}?` : ""}</Modal.Body>
+          <Modal.Body>
+            {inviteToDelete
+              ? `Скрыть инвайт-код ${inviteToDelete.code} из админки? Запись останется в базе. Неиспользованный код после скрытия нельзя использовать для регистрации.`
+              : ""}
+          </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setInviteToDelete(null)} disabled={isDeletingInvite}>
               Отмена
             </Button>
             <Button variant="danger" onClick={confirmDeleteInvite} disabled={isDeletingInvite}>
-              {isDeletingInvite ? "Удаление..." : "Удалить"}
+              {isDeletingInvite ? "Скрытие..." : "Скрыть"}
             </Button>
           </Modal.Footer>
         </Modal>
