@@ -37,17 +37,12 @@ function Navigation() {
 
       <div className="d-md-none d-flex flex-column align-items-stretch gap-2">
         <div className="d-flex flex-column align-items-stretch gap-2">
-          <Button
-            as={Link}
-            to="/guides"
-            variant={pathname.startsWith("/guides") ? "primary" : "outline-primary"}
-            className="w-100"
-          >
-            С чего начать?
-          </Button>
           <Collapse in={isOpen}>
             <div id="main-nav-collapse">
               <div className="d-flex flex-column gap-2">
+                <Button as={Link} to="/guides" variant={pathname.startsWith("/guides") ? "primary" : "outline-primary"}>
+                  С чего начать?
+                </Button>
                 <Button as={Link} to="/" variant={pathname === "/" ? "primary" : "outline-primary"}>
                   Регистрация
                 </Button>
