@@ -13,7 +13,23 @@ const APP_NAME = import.meta.env.VITE_APP_NAME || "VPN Access Service";
 
 function Navigation() {
   const { pathname } = useLocation();
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem("mobileNavIsOpen");
+      return saved === null ? true : saved === "true";
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("mobileNavIsOpen", String(isOpen));
+    } catch {
+      // Ignore storage errors (private mode or restricted settings).
+    }
+  }, [isOpen]);
+
   const closeMobileMenu = () => setIsOpen(false);
 
   return (
