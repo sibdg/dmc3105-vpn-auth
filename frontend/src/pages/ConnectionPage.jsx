@@ -89,7 +89,7 @@ export default function ConnectionPage({ notify }) {
                 </div>
                 <Form.Control
                   as="textarea"
-                  rows={2}
+                  rows={5}
                   readOnly
                   value={buildHysteriaUri(data)}
                   style={{ fontFamily: "monospace" }}
