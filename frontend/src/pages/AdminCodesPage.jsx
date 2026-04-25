@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Badge, Button, Card, Form, Modal, Table } from "react-bootstrap";
+import { Badge, Button, Card, Form, Modal, OverlayTrigger, Table, Tooltip } from "react-bootstrap";
 import { createInviteCodes, deleteInviteCode, getInviteCodes, setInviteCodeTransferred } from "../api";
 import AdminAuthGate from "../components/AdminAuthGate";
 
@@ -24,6 +24,19 @@ function isNarrowScreenForShare() {
   if (typeof window === "undefined") return false;
   /* Совпадает с Bootstrap md: как у сетки кнопок до d-md-flex */
   return window.matchMedia("(max-width: 767.98px)").matches;
+}
+
+function ActionTooltip({ id, label, children }) {
+  return (
+    <OverlayTrigger
+      placement="top"
+      delay={{ show: 0, hide: 0 }}
+      container={typeof document !== "undefined" ? document.body : undefined}
+      overlay={<Tooltip id={id}>{label}</Tooltip>}
+    >
+      {children}
+    </OverlayTrigger>
+  );
 }
 
 function SortableHeader({ label, column, sortBy, sortDir, onClick }) {
@@ -231,34 +244,43 @@ function AdminCodesContent({ logout, notify }) {
                       className="d-grid gap-2 d-md-flex flex-md-nowrap"
                       style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
                     >
-                      <Button size="sm" variant="outline-primary" onClick={() => copy(item.code)} title="Копировать код">
-                        <i className="bi bi-copy" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={item.is_transferred ? "outline-secondary" : "outline-success"}
-                        onClick={() => toggleTransferred(item)}
-                        title={item.is_transferred ? "Снять метку передачи" : "Пометить как переданный"}
+                      <ActionTooltip id={`invite-share-${item.code}`} label="Поделиться текстом приглашения (на ПК — копирование в буфер)">
+                        <Button size="sm" variant="outline-info" onClick={() => shareOrCopyInvite(item.code)}>
+                          <i className="bi bi-share" />
+                        </Button>
+                      </ActionTooltip>
+                      <ActionTooltip id={`invite-copy-${item.code}`} label="Копировать только код в буфер">
+                        <Button size="sm" variant="outline-primary" onClick={() => copy(item.code)}>
+                          <i className="bi bi-copy" />
+                        </Button>
+                      </ActionTooltip>
+                      <ActionTooltip
+                        id={`invite-del-${item.code}`}
+                        label={item.is_used ? "Нельзя удалить уже использованный код" : "Удалить неиспользованный код"}
                       >
-                        <i className={item.is_transferred ? "bi bi-check2-square" : "bi bi-square"} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        onClick={() => handleDeleteInvite(item)}
-                        disabled={item.is_used}
-                        title={item.is_used ? "Нельзя удалить использованный код" : "Удалить код"}
+                        <span className="d-inline-block">
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => handleDeleteInvite(item)}
+                            disabled={item.is_used}
+                          >
+                            <i className="bi bi-trash" />
+                          </Button>
+                        </span>
+                      </ActionTooltip>
+                      <ActionTooltip
+                        id={`invite-tr-${item.code}`}
+                        label={item.is_transferred ? "Снять отметку «код передан получателю»" : "Отметить, что код передан получателю"}
                       >
-                        <i className="bi bi-trash" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline-info"
-                        onClick={() => shareOrCopyInvite(item.code)}
-                        title="Поделиться текстом приглашения"
-                      >
-                        <i className="bi bi-share" />
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant={item.is_transferred ? "outline-secondary" : "outline-success"}
+                          onClick={() => toggleTransferred(item)}
+                        >
+                          <i className={item.is_transferred ? "bi bi-check2-square" : "bi bi-square"} />
+                        </Button>
+                      </ActionTooltip>
                     </div>
                   </td>
                 </tr>
