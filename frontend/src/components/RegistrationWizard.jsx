@@ -9,9 +9,17 @@ const COOLDOWN_MS = 60_000;
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STATE_KEY);
+    const raw = sessionStorage.getItem(STATE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      step: Number(parsed.step) || 1,
+      email: typeof parsed.email === "string" ? parsed.email : "",
+      firstName: typeof parsed.firstName === "string" ? parsed.firstName : "",
+      lastName: typeof parsed.lastName === "string" ? parsed.lastName : "",
+      consentAccepted: Boolean(parsed.consentAccepted)
+    };
   } catch {
     return null;
   }
@@ -21,8 +29,8 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
   const saved = loadState();
   const [step, setStep] = useState(saved?.step || 1);
   const [email, setEmail] = useState(saved?.email || "");
-  const [code, setCode] = useState(saved?.code || "");
-  const [inviteCode, setInviteCode] = useState(saved?.inviteCode || "");
+  const [code, setCode] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [firstName, setFirstName] = useState(saved?.firstName || "");
   const [lastName, setLastName] = useState(saved?.lastName || "");
   const [consentAccepted, setConsentAccepted] = useState(Boolean(saved?.consentAccepted));
@@ -42,9 +50,9 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
   const resendSecondsLeft = Math.max(0, Math.ceil((resendAvailableAt - nowTs) / 1000));
 
   useEffect(() => {
-    localStorage.setItem(STATE_KEY, JSON.stringify({ step, email, code, inviteCode, firstName, lastName, consentAccepted }));
+    sessionStorage.setItem(STATE_KEY, JSON.stringify({ step, email, firstName, lastName, consentAccepted }));
     onStepChange(step);
-  }, [step, email, code, inviteCode, firstName, lastName, consentAccepted, onStepChange]);
+  }, [step, email, firstName, lastName, consentAccepted, onStepChange]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 1000);
@@ -93,7 +101,7 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
         first_name: firstName,
         last_name: lastName || null
       });
-      localStorage.removeItem(STATE_KEY);
+      sessionStorage.removeItem(STATE_KEY);
       localStorage.removeItem(RESEND_KEY);
       setStep(1);
       setCode("");

@@ -36,6 +36,12 @@ class RegisterResponse(BaseModel):
     password: str
 
 
+class ProfileConnectionResponse(BaseModel):
+    server: str
+    username: str
+    password: str
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str

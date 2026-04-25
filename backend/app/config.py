@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 720
     auth_cookie_name: str = "vpn_admin_access"
     csrf_cookie_name: str = "vpn_admin_csrf"
+    user_auth_cookie_name: str = "vpn_user_access"
+    user_csrf_cookie_name: str = "vpn_user_csrf"
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
 

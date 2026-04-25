@@ -3,18 +3,11 @@ import { useNavigate } from "react-router-dom";
 import GuideLinks from "../components/GuideLinks";
 import RegistrationWizard from "../components/RegistrationWizard";
 
-const CONNECTION_KEY = "vpn_connection_data";
-
 export default function RegistrationPage({ notify }) {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
 
-  const handleSuccess = (result) => {
-    const normalized = {
-      ...result,
-      username: result?.vpn_username || result?.username || ""
-    };
-    localStorage.setItem(CONNECTION_KEY, JSON.stringify(normalized));
+  const handleSuccess = () => {
     notify("success", "Регистрация завершена.");
     navigate("/connection");
   };

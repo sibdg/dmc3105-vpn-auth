@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button, Card, Form } from "react-bootstrap";
 import { QRCodeCanvas } from "qrcode.react";
+import { getProfileConnection } from "../api";
 import GuidesAccordion from "../components/GuidesAccordion";
 
-const CONNECTION_KEY = "vpn_connection_data";
 const HYSTERIA_URI_TAG = import.meta.env.VITE_HYSTERIA_URI_TAG || "VPN Auth";
 
 function normalizeConnectionData(raw) {
@@ -16,18 +16,20 @@ function normalizeConnectionData(raw) {
 
 export default function ConnectionPage({ notify }) {
   const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(CONNECTION_KEY) || "null");
-      const normalized = normalizeConnectionData(parsed);
-      setData(normalized);
-      if (normalized) {
-        localStorage.setItem(CONNECTION_KEY, JSON.stringify(normalized));
+    const loadConnectionData = async () => {
+      try {
+        const payload = await getProfileConnection();
+        setData(normalizeConnectionData(payload));
+      } catch {
+        setData(null);
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      setData(null);
-    }
+    };
+    void loadConnectionData();
   }, []);
 
   const copy = async (value, label) => {
@@ -75,8 +77,10 @@ export default function ConnectionPage({ notify }) {
       <Card>
         <Card.Body>
           <Card.Title>Данные подключения</Card.Title>
-          {!data ? (
-            <p className="mb-0">Нет данных подключения. Заверши регистрацию.</p>
+          {isLoading ? (
+            <p className="mb-0">Загружаем данные подключения...</p>
+          ) : !data ? (
+            <p className="mb-0">Нет данных подключения или сессия истекла. Заверши регистрацию снова.</p>
           ) : (
             <div className="d-flex flex-column gap-3">
               <div>

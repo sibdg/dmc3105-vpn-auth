@@ -1,4 +1,5 @@
 const CSRF_COOKIE_NAME = import.meta.env.VITE_CSRF_COOKIE_NAME || "vpn_admin_csrf";
+const USER_CSRF_COOKIE_NAME = import.meta.env.VITE_USER_CSRF_COOKIE_NAME || "vpn_user_csrf";
 
 function getApiBase() {
   const raw = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
@@ -36,7 +37,7 @@ async function request(path, options = {}) {
   const { headers: customHeaders = {}, ...restOptions } = options;
   const method = (restOptions.method || "GET").toUpperCase();
   const needsCsrf = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
-  const csrfToken = needsCsrf ? readCookie(CSRF_COOKIE_NAME) : null;
+  const csrfToken = needsCsrf ? readCookie(USER_CSRF_COOKIE_NAME) || readCookie(CSRF_COOKIE_NAME) : null;
   const response = await fetch(`${getApiBase()}${path}`, {
     ...restOptions,
     credentials: "include",
@@ -94,6 +95,10 @@ export function registerUser(payload) {
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+export function getProfileConnection() {
+  return request("/profile/connection");
 }
 
 export function adminLogin(username, password) {

@@ -19,6 +19,7 @@ from app.schemas import (
     MessageResponse,
     PaginatedInviteCodesResponse,
     PaginatedUsersResponse,
+    ProfileConnectionResponse,
     RegisterRequest,
     RegisterResponse,
     RequestEmailCodeRequest,
@@ -31,9 +32,11 @@ from app.security import (
     create_access_token,
     generate_csrf_token,
     get_current_admin,
+    get_current_user,
     register_login_failure,
     register_login_success,
-    validate_csrf,
+    validate_admin_csrf,
+    validate_user_csrf,
 )
 from app.services import (
     apply_hysteria_user,
@@ -121,7 +124,7 @@ def verify_code(payload: VerifyEmailCodeRequest, db: Session = Depends(get_db)) 
 
 
 @app.post(f"{settings.api_prefix}/register", response_model=RegisterResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
+def register(payload: RegisterRequest, response: Response, db: Session = Depends(get_db)) -> RegisterResponse:
     existing_user = db.query(User).filter(User.email == payload.email).first()
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
@@ -148,6 +151,26 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
     db.refresh(user)
 
     write_audit_log(db, "user_registered", payload.email, f"Registered via invite code {invite.code}")
+    token = create_access_token(payload.email, token_type="user")
+    csrf_token = generate_csrf_token()
+    response.set_cookie(
+        key=settings.user_auth_cookie_name,
+        value=token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.jwt_expire_minutes * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key=settings.user_csrf_cookie_name,
+        value=csrf_token,
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.jwt_expire_minutes * 60,
+        path="/",
+    )
 
     return RegisterResponse(
         message="Registration completed",
@@ -166,7 +189,7 @@ def admin_login(payload: LoginRequest, request: Request, response: Response) -> 
         register_login_failure(key)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     register_login_success(key)
-    token = create_access_token(settings.admin_username)
+    token = create_access_token(settings.admin_username, token_type="admin")
     csrf_token = generate_csrf_token()
     response.set_cookie(
         key=settings.auth_cookie_name,
@@ -190,7 +213,7 @@ def admin_login(payload: LoginRequest, request: Request, response: Response) -> 
 
 
 @app.post(f"{settings.api_prefix}/admin/logout", response_model=MessageResponse)
-def admin_logout(response: Response, _: None = Depends(validate_csrf)) -> MessageResponse:
+def admin_logout(response: Response, _: None = Depends(validate_admin_csrf)) -> MessageResponse:
     response.delete_cookie(key=settings.auth_cookie_name, path="/")
     response.delete_cookie(key=settings.csrf_cookie_name, path="/")
     return MessageResponse(message="Logged out")
@@ -199,6 +222,30 @@ def admin_logout(response: Response, _: None = Depends(validate_csrf)) -> Messag
 @app.get(f"{settings.api_prefix}/admin/session", response_model=MessageResponse)
 def admin_session(_: str = Depends(get_current_admin)) -> MessageResponse:
     return MessageResponse(message="Authenticated")
+
+
+@app.post(f"{settings.api_prefix}/auth/logout", response_model=MessageResponse)
+def user_logout(response: Response, _: None = Depends(validate_user_csrf)) -> MessageResponse:
+    response.delete_cookie(key=settings.user_auth_cookie_name, path="/")
+    response.delete_cookie(key=settings.user_csrf_cookie_name, path="/")
+    return MessageResponse(message="Logged out")
+
+
+@app.get(f"{settings.api_prefix}/auth/session", response_model=MessageResponse)
+def user_session(_: str = Depends(get_current_user)) -> MessageResponse:
+    return MessageResponse(message="Authenticated")
+
+
+@app.get(f"{settings.api_prefix}/profile/connection", response_model=ProfileConnectionResponse)
+def profile_connection(current_email: str = Depends(get_current_user), db: Session = Depends(get_db)) -> ProfileConnectionResponse:
+    user = ensure_user_exists(db, current_email)
+    if not user.vpn_username or not user.hysteria_password:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection data not found")
+    return ProfileConnectionResponse(
+        server=settings.registration_base_url,
+        username=user.vpn_username,
+        password=user.hysteria_password,
+    )
 
 
 @app.post(f"{settings.api_prefix}/profile/request-delete-code", response_model=MessageResponse)
@@ -225,7 +272,7 @@ def delete_profile(payload: DeleteProfileRequest, db: Session = Depends(get_db))
 def create_invite_codes(
     payload: CreateInviteCodesRequest,
     admin: str = Depends(get_current_admin),
-    _: None = Depends(validate_csrf),
+    _: None = Depends(validate_admin_csrf),
     db: Session = Depends(get_db),
 ) -> list[InviteCodeOut]:
     codes: list[InviteCode] = []
@@ -287,7 +334,7 @@ def update_invite_delivery_status(
     code: str,
     payload: UpdateInviteDeliveryStatusRequest,
     admin: str = Depends(get_current_admin),
-    _: None = Depends(validate_csrf),
+    _: None = Depends(validate_admin_csrf),
     db: Session = Depends(get_db),
 ) -> MessageResponse:
     invite = db.query(InviteCode).filter(InviteCode.code == code, InviteCode.is_hidden.is_(False)).first()
@@ -310,7 +357,7 @@ def update_invite_delivery_status(
 def delete_invite_code(
     code: str,
     admin: str = Depends(get_current_admin),
-    _: None = Depends(validate_csrf),
+    _: None = Depends(validate_admin_csrf),
     db: Session = Depends(get_db),
 ) -> MessageResponse:
     invite = db.query(InviteCode).filter(InviteCode.code == code, InviteCode.is_hidden.is_(False)).first()
@@ -355,7 +402,7 @@ def list_users(
 def delete_user_by_admin(
     user_id: int,
     admin: str = Depends(get_current_admin),
-    _: None = Depends(validate_csrf),
+    _: None = Depends(validate_admin_csrf),
     db: Session = Depends(get_db),
 ) -> MessageResponse:
     user = db.query(User).filter(User.id == user_id).first()
