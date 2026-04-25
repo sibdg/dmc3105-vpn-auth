@@ -37,7 +37,10 @@ async function request(path, options = {}) {
   const { headers: customHeaders = {}, ...restOptions } = options;
   const method = (restOptions.method || "GET").toUpperCase();
   const needsCsrf = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
-  const csrfToken = needsCsrf ? readCookie(USER_CSRF_COOKIE_NAME) || readCookie(CSRF_COOKIE_NAME) : null;
+  const isAdminPath = path === "/admin/logout" || path.startsWith("/admin/");
+  const csrfToken = needsCsrf
+    ? (isAdminPath ? readCookie(CSRF_COOKIE_NAME) : readCookie(USER_CSRF_COOKIE_NAME) || readCookie(CSRF_COOKIE_NAME))
+    : null;
   const response = await fetch(`${getApiBase()}${path}`, {
     ...restOptions,
     credentials: "include",
