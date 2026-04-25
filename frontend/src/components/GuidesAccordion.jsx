@@ -30,16 +30,21 @@ const GUIDE_DATA = [
     title: "iOS",
     links: [
       {
-        label: "Общая ссылка (может не работать без прокси)",
-        url: "https://hiddify.com/"
+        label: "Egern (App Store, работает в RU-регионе)",
+        url: "https://apps.apple.com/ru/app/egern/id1616105820"
       },
       {
-        label: "iOS (App Store)",
+        label: "Hiddify (App Store, в RU-регионе обычно недоступен/не работает)",
         url: "https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532"
+      },
+      {
+        label: "Hiddify (официальный сайт, может не открываться без прокси)",
+        url: "https://hiddify.com/"
       }
     ],
     steps: [
-      "Установи Hiddify из App Store.",
+      "Рекомендуемый вариант для РФ-региона: установи Egern из App Store.",
+      "Hiddify оставлен как пример клиента, но в RU-регионе может быть недоступен или работать нестабильно.",
       "Добавь профиль через ссылку или QR.",
       "Нажми Connect и подтверди VPN-конфигурацию.",
       "Проверь статус Connected."
