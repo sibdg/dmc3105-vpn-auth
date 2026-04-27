@@ -3,7 +3,6 @@ import { Button, Card, Form } from "react-bootstrap";
 import { QRCodeCanvas } from "qrcode.react";
 import { getProfileConnection } from "../api";
 import GuidesAccordion from "../components/GuidesAccordion";
-import { ConnectionSkeleton } from "../components/LoadingSkeletons";
 
 const HYSTERIA_URI_TAG = import.meta.env.VITE_HYSTERIA_URI_TAG || "VPN Auth";
 
@@ -18,16 +17,6 @@ function normalizeConnectionData(raw) {
 export default function ConnectionPage({ notify }) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showSkeleton, setShowSkeleton] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading) {
-      setShowSkeleton(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setShowSkeleton(true), 180);
-    return () => window.clearTimeout(timer);
-  }, [isLoading]);
 
   useEffect(() => {
     const loadConnectionData = async () => {
@@ -89,7 +78,7 @@ export default function ConnectionPage({ notify }) {
         <Card.Body>
           <Card.Title>Данные подключения</Card.Title>
           {isLoading ? (
-            showSkeleton ? <ConnectionSkeleton /> : null
+            <p className="mb-0">Загружаем данные подключения...</p>
           ) : !data ? (
             <p className="mb-0">Нет данных подключения или сессия истекла. Выполни вход или регистрацию снова.</p>
           ) : (
