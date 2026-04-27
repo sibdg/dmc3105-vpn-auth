@@ -17,6 +17,11 @@ class VerifyEmailCodeRequest(BaseModel):
     code: str = Field(min_length=4, max_length=16)
 
 
+class VerifyEmailCodeResponse(BaseModel):
+    message: str
+    flow: Literal["login", "registration"]
+
+
 class DeleteProfileRequest(BaseModel):
     email: EmailStr
     code: str = Field(min_length=4, max_length=16)

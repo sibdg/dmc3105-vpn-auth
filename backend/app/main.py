@@ -26,6 +26,7 @@ from app.schemas import (
     UpdateInviteDeliveryStatusRequest,
     UserOut,
     VerifyEmailCodeRequest,
+    VerifyEmailCodeResponse,
 )
 from app.security import (
     check_login_allowed,
@@ -114,13 +115,64 @@ def request_email_code(payload: RequestEmailCodeRequest, db: Session = Depends(g
     return MessageResponse(message="Verification code sent")
 
 
-@app.post(f"{settings.api_prefix}/auth/verify-email-code", response_model=MessageResponse)
-def verify_code(payload: VerifyEmailCodeRequest, db: Session = Depends(get_db)) -> MessageResponse:
+@app.post(f"{settings.api_prefix}/auth/verify-email-code", response_model=VerifyEmailCodeResponse)
+def verify_code(payload: VerifyEmailCodeRequest, response: Response, db: Session = Depends(get_db)) -> VerifyEmailCodeResponse:
     existing_user = db.query(User).filter(User.email == payload.email).first()
-    if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
     verify_email_code(db, payload.email, payload.code)
-    return MessageResponse(message="Email verified")
+    if existing_user:
+        token = create_access_token(payload.email, token_type="user")
+        csrf_token = generate_csrf_token()
+        response.set_cookie(
+            key=settings.user_auth_cookie_name,
+            value=token,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            max_age=settings.jwt_expire_minutes * 60,
+            path="/",
+        )
+        response.set_cookie(
+            key=settings.user_csrf_cookie_name,
+            value=csrf_token,
+            httponly=False,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            max_age=settings.jwt_expire_minutes * 60,
+            path="/",
+        )
+        return VerifyEmailCodeResponse(message="Logged in", flow="login")
+    return VerifyEmailCodeResponse(message="Email verified", flow="registration")
+
+
+@app.post(f"{settings.api_prefix}/auth/login-email-code", response_model=MessageResponse)
+def login_with_email_code(
+    payload: VerifyEmailCodeRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    ensure_user_exists(db, payload.email)
+    verify_email_code(db, payload.email, payload.code)
+    token = create_access_token(payload.email, token_type="user")
+    csrf_token = generate_csrf_token()
+    response.set_cookie(
+        key=settings.user_auth_cookie_name,
+        value=token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.jwt_expire_minutes * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key=settings.user_csrf_cookie_name,
+        value=csrf_token,
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.jwt_expire_minutes * 60,
+        path="/",
+    )
+    return MessageResponse(message="Logged in")
 
 
 @app.post(f"{settings.api_prefix}/register", response_model=RegisterResponse)

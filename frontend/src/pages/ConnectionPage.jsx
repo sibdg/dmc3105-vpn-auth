@@ -80,7 +80,7 @@ export default function ConnectionPage({ notify }) {
           {isLoading ? (
             <p className="mb-0">Загружаем данные подключения...</p>
           ) : !data ? (
-            <p className="mb-0">Нет данных подключения или сессия истекла. Заверши регистрацию снова.</p>
+            <p className="mb-0">Нет данных подключения или сессия истекла. Выполни вход или регистрацию снова.</p>
           ) : (
             <div className="d-flex flex-column gap-3">
               <div>

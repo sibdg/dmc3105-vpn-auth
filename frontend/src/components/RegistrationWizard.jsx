@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Col, Form, Row } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { registerUser, requestEmailCode, verifyEmailCode } from "../api";
+import { loginWithEmailCode, registerUser, requestEmailCode, verifyEmailCode } from "../api";
 
 const STATE_KEY = "vpn_registration_state";
 const RESEND_KEY = "vpn_registration_resend";
@@ -84,10 +84,40 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
   const handleVerifyCode = async (event) => {
     event.preventDefault();
     try {
-      await verifyEmailCode(email, code);
+      const result = await verifyEmailCode(email, code);
+      if (result?.flow === "login") {
+        sessionStorage.removeItem(STATE_KEY);
+        localStorage.removeItem(RESEND_KEY);
+        setStep(1);
+        setCode("");
+        setInviteCode("");
+        setFirstName("");
+        setLastName("");
+        notify("success", "Вход выполнен. Данные подключения восстановлены.");
+        onSuccess({ flow: "login" });
+        return;
+      }
       notify("success", "Почта подтверждена.");
       setStep(3);
     } catch (err) {
+      if (err?.message === "User already exists") {
+        try {
+          await loginWithEmailCode(email, code);
+          sessionStorage.removeItem(STATE_KEY);
+          localStorage.removeItem(RESEND_KEY);
+          setStep(1);
+          setCode("");
+          setInviteCode("");
+          setFirstName("");
+          setLastName("");
+          notify("success", "Вход выполнен. Данные подключения восстановлены.");
+          onSuccess({ flow: "login" });
+          return;
+        } catch (loginErr) {
+          notify("danger", loginErr.message);
+          return;
+        }
+      }
       notify("danger", err.message);
     }
   };
@@ -108,7 +138,7 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
       setInviteCode("");
       setFirstName("");
       setLastName("");
-      onSuccess(result);
+      onSuccess({ ...result, flow: "registration" });
     } catch (err) {
       notify("danger", err.message);
     }
@@ -117,7 +147,7 @@ export default function RegistrationWizard({ notify, onSuccess, onStepChange }) 
   return (
     <Card>
       <Card.Body>
-        <Card.Title>Регистрация в VPN</Card.Title>
+        <Card.Title>Вход или регистрация в VPN</Card.Title>
         {step === 1 && (
           <Form onSubmit={handleRequestCode}>
             <Form.Group>

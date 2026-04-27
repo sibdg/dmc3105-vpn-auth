@@ -7,8 +7,10 @@ export default function RegistrationPage({ notify }) {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
 
-  const handleSuccess = () => {
-    notify("success", "Регистрация завершена.");
+  const handleSuccess = (result) => {
+    if (result?.flow === "registration") {
+      notify("success", "Регистрация завершена.");
+    }
     navigate("/connection");
   };
 

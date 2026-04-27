@@ -79,6 +79,21 @@ export function verifyEmailCode(email, code) {
   });
 }
 
+export function loginWithEmailCode(email, code) {
+  return request("/auth/login-email-code", {
+    method: "POST",
+    body: JSON.stringify({ email, code })
+  });
+}
+
+export function userLogout() {
+  return request("/auth/logout", { method: "POST" });
+}
+
+export function userSession() {
+  return request("/auth/session");
+}
+
 export function requestDeleteCode(email) {
   return request("/profile/request-delete-code", {
     method: "POST",

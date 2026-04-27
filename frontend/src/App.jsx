@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Collapse, Container } from "react-bootstrap";
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { userLogout, userSession } from "./api";
 import ToastCenter from "./components/ToastCenter";
 import AdminPage from "./pages/AdminPage";
 import ConnectionPage from "./pages/ConnectionPage";
@@ -11,8 +12,11 @@ import RegistrationPage from "./pages/RegistrationPage";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || "VPN Access Service";
 
-function Navigation() {
+function Navigation({ notify }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [isUserLoggingOut, setIsUserLoggingOut] = useState(false);
   const [isOpen, setIsOpen] = useState(() => {
     try {
       const saved = localStorage.getItem("mobileNavIsOpen");
@@ -30,7 +34,34 @@ function Navigation() {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const checkUserSession = async () => {
+      try {
+        await userSession();
+        setIsUserLoggedIn(true);
+      } catch {
+        setIsUserLoggedIn(false);
+      }
+    };
+    void checkUserSession();
+  }, [pathname]);
+
   const closeMobileMenu = () => setIsOpen(false);
+
+  const handleUserLogout = async () => {
+    if (isUserLoggingOut) return;
+    setIsUserLoggingOut(true);
+    try {
+      await userLogout();
+      setIsUserLoggedIn(false);
+      notify("success", "Вы вышли из аккаунта.");
+      navigate("/", { replace: true });
+    } catch (err) {
+      notify("danger", err.message);
+    } finally {
+      setIsUserLoggingOut(false);
+    }
+  };
 
   return (
     <div>
@@ -38,12 +69,20 @@ function Navigation() {
         <Button as={Link} to="/guides" variant={pathname.startsWith("/guides") ? "primary" : "outline-primary"}>
           С чего начать?
         </Button>
-        <Button as={Link} to="/" variant={pathname === "/" ? "primary" : "outline-primary"}>
-          Регистрация
-        </Button>
-        <Button as={Link} to="/connection" variant={pathname === "/connection" ? "success" : "outline-success"}>
-          Данные подключения
-        </Button>
+        {isUserLoggedIn ? (
+          <Button variant="outline-danger" onClick={handleUserLogout} disabled={isUserLoggingOut}>
+            {isUserLoggingOut ? "Выходим..." : "Выйти"}
+          </Button>
+        ) : (
+          <Button as={Link} to="/" variant={pathname === "/" ? "primary" : "outline-primary"}>
+            Вход или регистрация
+          </Button>
+        )}
+        {isUserLoggedIn && (
+          <Button as={Link} to="/connection" variant={pathname === "/connection" ? "success" : "outline-success"}>
+            Данные подключения
+          </Button>
+        )}
         <Button as={Link} to="/delete-profile" variant={pathname === "/delete-profile" ? "danger" : "outline-danger"}>
           Удалить профиль
         </Button>
@@ -65,17 +104,32 @@ function Navigation() {
                 >
                   С чего начать?
                 </Button>
-                <Button as={Link} to="/" onClick={closeMobileMenu} variant={pathname === "/" ? "primary" : "outline-primary"}>
-                  Регистрация
-                </Button>
-                <Button
-                  as={Link}
-                  to="/connection"
-                  onClick={closeMobileMenu}
-                  variant={pathname === "/connection" ? "success" : "outline-success"}
-                >
-                  Данные подключения
-                </Button>
+                {isUserLoggedIn ? (
+                  <Button
+                    variant="outline-danger"
+                    onClick={() => {
+                      closeMobileMenu();
+                      void handleUserLogout();
+                    }}
+                    disabled={isUserLoggingOut}
+                  >
+                    {isUserLoggingOut ? "Выходим..." : "Выйти"}
+                  </Button>
+                ) : (
+                  <Button as={Link} to="/" onClick={closeMobileMenu} variant={pathname === "/" ? "primary" : "outline-primary"}>
+                    Вход или регистрация
+                  </Button>
+                )}
+                {isUserLoggedIn && (
+                  <Button
+                    as={Link}
+                    to="/connection"
+                    onClick={closeMobileMenu}
+                    variant={pathname === "/connection" ? "success" : "outline-success"}
+                  >
+                    Данные подключения
+                  </Button>
+                )}
                 <Button
                   as={Link}
                   to="/delete-profile"
@@ -135,6 +189,29 @@ function Navigation() {
   );
 }
 
+function ProtectedConnectionRoute({ notify }) {
+  const [isChecking, setIsChecking] = useState(true);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkUserSession = async () => {
+      try {
+        await userSession();
+        setIsUserLoggedIn(true);
+      } catch {
+        setIsUserLoggedIn(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    void checkUserSession();
+  }, []);
+
+  if (isChecking) return null;
+  if (!isUserLoggedIn) return <Navigate to="/" replace />;
+  return <ConnectionPage notify={notify} />;
+}
+
 export default function App() {
   const [toasts, setToasts] = useState([]);
 
@@ -159,13 +236,13 @@ export default function App() {
       >
         <Container className="py-2 py-md-3">
           <h1 className="mb-2 mb-md-3 fs-4">{APP_NAME}</h1>
-          <Navigation />
+          <Navigation notify={notify} />
         </Container>
       </div>
       <Container className="py-4">
         <Routes>
           <Route path="/" element={<RegistrationPage notify={notify} />} />
-          <Route path="/connection" element={<ConnectionPage notify={notify} />} />
+          <Route path="/connection" element={<ProtectedConnectionRoute notify={notify} />} />
           <Route path="/delete-profile" element={<DeleteProfilePage notify={notify} />} />
           <Route path="/consent" element={<ConsentPage />} />
           <Route path="/guides" element={<GuidePage />} />
