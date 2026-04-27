@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, Collapse, Container } from "react-bootstrap";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { userLogout, userSession } from "./api";
@@ -16,7 +16,7 @@ const APP_NAME = import.meta.env.VITE_APP_NAME || "VPN Access Service";
 function Navigation({ notify }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [userSessionState, setUserSessionState] = useState("checking");
   const [isUserLoggingOut, setIsUserLoggingOut] = useState(false);
   const [isOpen, setIsOpen] = useState(() => {
     try {
@@ -35,17 +35,55 @@ function Navigation({ notify }) {
     }
   }, [isOpen]);
 
+  const refreshUserSession = useCallback(async () => {
+    try {
+      await userSession();
+      setUserSessionState("authenticated");
+    } catch {
+      setUserSessionState("guest");
+    }
+  }, []);
+
   useEffect(() => {
-    const checkUserSession = async () => {
+    let cancelled = false;
+    setUserSessionState("checking");
+
+    const initialCheck = async () => {
       try {
         await userSession();
-        setIsUserLoggedIn(true);
+        if (!cancelled) setUserSessionState("authenticated");
       } catch {
-        setIsUserLoggedIn(false);
+        if (!cancelled) setUserSessionState("guest");
       }
     };
-    void checkUserSession();
-  }, [pathname]);
+
+    void initialCheck();
+
+    const onFocus = () => {
+      void refreshUserSession();
+    };
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        void refreshUserSession();
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    const adminInterval = pathname.startsWith("/admin")
+      ? window.setInterval(() => {
+          void refreshUserSession();
+        }, 1200)
+      : null;
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (adminInterval) window.clearInterval(adminInterval);
+    };
+  }, [pathname, refreshUserSession]);
 
   const closeMobileMenu = () => setIsOpen(false);
 
@@ -54,7 +92,7 @@ function Navigation({ notify }) {
     setIsUserLoggingOut(true);
     try {
       await userLogout();
-      setIsUserLoggedIn(false);
+      setUserSessionState("guest");
       notify("success", "Вы вышли из аккаунта.");
       navigate("/", { replace: true });
     } catch (err) {
@@ -70,25 +108,28 @@ function Navigation({ notify }) {
         <Button as={Link} to="/guides" variant={pathname.startsWith("/guides") ? "primary" : "outline-primary"}>
           С чего начать?
         </Button>
-        {isUserLoggedIn ? (
-          <Button variant="outline-danger" onClick={handleUserLogout} disabled={isUserLoggingOut}>
-            {isUserLoggingOut ? "Выходим..." : "Выйти"}
-          </Button>
-        ) : (
+        {userSessionState !== "authenticated" && (
           <Button as={Link} to="/registration" variant={pathname === "/registration" ? "primary" : "outline-primary"}>
             Вход или регистрация
           </Button>
         )}
-        {isUserLoggedIn && (
+        {userSessionState === "authenticated" && (
           <Button as={Link} to="/connection" variant={pathname === "/connection" ? "success" : "outline-success"}>
             Данные подключения
           </Button>
         )}
+        {userSessionState === "authenticated" && (
+          <Button as={Link} to="/consent" variant={pathname === "/consent" ? "secondary" : "outline-secondary"}>
+            Согласие
+          </Button>
+        )}
+        {userSessionState === "authenticated" && (
+          <Button variant="outline-danger" onClick={handleUserLogout} disabled={isUserLoggingOut}>
+            {isUserLoggingOut ? "Выходим..." : "Выйти"}
+          </Button>
+        )}
         <Button as={Link} to="/delete-profile" variant={pathname === "/delete-profile" ? "danger" : "outline-danger"}>
           Удалить профиль
-        </Button>
-        <Button as={Link} to="/consent" variant={pathname === "/consent" ? "secondary" : "outline-secondary"}>
-          Согласие
         </Button>
       </div>
 
@@ -105,7 +146,37 @@ function Navigation({ notify }) {
                 >
                   С чего начать?
                 </Button>
-                {isUserLoggedIn ? (
+                {userSessionState !== "authenticated" && (
+                  <Button
+                    as={Link}
+                    to="/registration"
+                    onClick={closeMobileMenu}
+                    variant={pathname === "/registration" ? "primary" : "outline-primary"}
+                  >
+                    Вход или регистрация
+                  </Button>
+                )}
+                {userSessionState === "authenticated" && (
+                  <Button
+                    as={Link}
+                    to="/connection"
+                    onClick={closeMobileMenu}
+                    variant={pathname === "/connection" ? "success" : "outline-success"}
+                  >
+                    Данные подключения
+                  </Button>
+                )}
+                {userSessionState === "authenticated" && (
+                  <Button
+                    as={Link}
+                    to="/consent"
+                    onClick={closeMobileMenu}
+                    variant={pathname === "/consent" ? "secondary" : "outline-secondary"}
+                  >
+                    Согласие
+                  </Button>
+                )}
+                {userSessionState === "authenticated" && (
                   <Button
                     variant="outline-danger"
                     onClick={() => {
@@ -116,25 +187,6 @@ function Navigation({ notify }) {
                   >
                     {isUserLoggingOut ? "Выходим..." : "Выйти"}
                   </Button>
-                ) : (
-                  <Button
-                    as={Link}
-                    to="/registration"
-                    onClick={closeMobileMenu}
-                    variant={pathname === "/registration" ? "primary" : "outline-primary"}
-                  >
-                    Вход или регистрация
-                  </Button>
-                )}
-                {isUserLoggedIn && (
-                  <Button
-                    as={Link}
-                    to="/connection"
-                    onClick={closeMobileMenu}
-                    variant={pathname === "/connection" ? "success" : "outline-success"}
-                  >
-                    Данные подключения
-                  </Button>
                 )}
                 <Button
                   as={Link}
@@ -143,14 +195,6 @@ function Navigation({ notify }) {
                   variant={pathname === "/delete-profile" ? "danger" : "outline-danger"}
                 >
                   Удалить профиль
-                </Button>
-                <Button
-                  as={Link}
-                  to="/consent"
-                  onClick={closeMobileMenu}
-                  variant={pathname === "/consent" ? "secondary" : "outline-secondary"}
-                >
-                  Согласие
                 </Button>
               </div>
             </div>
