@@ -74,7 +74,7 @@ function Navigation({ notify }) {
             {isUserLoggingOut ? "Выходим..." : "Выйти"}
           </Button>
         ) : (
-          <Button as={Link} to="/" variant={pathname === "/" ? "primary" : "outline-primary"}>
+          <Button as={Link} to="/registration" variant={pathname === "/registration" ? "primary" : "outline-primary"}>
             Вход или регистрация
           </Button>
         )}
@@ -116,7 +116,12 @@ function Navigation({ notify }) {
                     {isUserLoggingOut ? "Выходим..." : "Выйти"}
                   </Button>
                 ) : (
-                  <Button as={Link} to="/" onClick={closeMobileMenu} variant={pathname === "/" ? "primary" : "outline-primary"}>
+                  <Button
+                    as={Link}
+                    to="/registration"
+                    onClick={closeMobileMenu}
+                    variant={pathname === "/registration" ? "primary" : "outline-primary"}
+                  >
                     Вход или регистрация
                   </Button>
                 )}
@@ -208,8 +213,30 @@ function ProtectedConnectionRoute({ notify }) {
   }, []);
 
   if (isChecking) return null;
-  if (!isUserLoggedIn) return <Navigate to="/" replace />;
+  if (!isUserLoggedIn) return <Navigate to="/guides" replace />;
   return <ConnectionPage notify={notify} />;
+}
+
+function RootRedirect() {
+  const [isChecking, setIsChecking] = useState(true);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkUserSession = async () => {
+      try {
+        await userSession();
+        setIsUserLoggedIn(true);
+      } catch {
+        setIsUserLoggedIn(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    void checkUserSession();
+  }, []);
+
+  if (isChecking) return null;
+  return <Navigate to={isUserLoggedIn ? "/connection" : "/guides"} replace />;
 }
 
 export default function App() {
@@ -241,7 +268,8 @@ export default function App() {
       </div>
       <Container className="py-4">
         <Routes>
-          <Route path="/" element={<RegistrationPage notify={notify} />} />
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/registration" element={<RegistrationPage notify={notify} />} />
           <Route path="/connection" element={<ProtectedConnectionRoute notify={notify} />} />
           <Route path="/delete-profile" element={<DeleteProfilePage notify={notify} />} />
           <Route path="/consent" element={<ConsentPage />} />
