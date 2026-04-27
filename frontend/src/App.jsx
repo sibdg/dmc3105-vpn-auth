@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Collapse, Container } from "react-bootstrap";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { userLogout, userSession } from "./api";
+import { RouteCheckSkeleton } from "./components/LoadingSkeletons";
 import ToastCenter from "./components/ToastCenter";
 import AdminPage from "./pages/AdminPage";
 import ConnectionPage from "./pages/ConnectionPage";
@@ -197,6 +198,16 @@ function Navigation({ notify }) {
 function ProtectedConnectionRoute({ notify }) {
   const [isChecking, setIsChecking] = useState(true);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+
+  useEffect(() => {
+    if (!isChecking) {
+      setShowSkeleton(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setShowSkeleton(true), 180);
+    return () => window.clearTimeout(timer);
+  }, [isChecking]);
 
   useEffect(() => {
     const checkUserSession = async () => {
@@ -212,7 +223,7 @@ function ProtectedConnectionRoute({ notify }) {
     void checkUserSession();
   }, []);
 
-  if (isChecking) return null;
+  if (isChecking) return showSkeleton ? <RouteCheckSkeleton /> : null;
   if (!isUserLoggedIn) return <Navigate to="/guides" replace />;
   return <ConnectionPage notify={notify} />;
 }
@@ -220,6 +231,16 @@ function ProtectedConnectionRoute({ notify }) {
 function RootRedirect() {
   const [isChecking, setIsChecking] = useState(true);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+
+  useEffect(() => {
+    if (!isChecking) {
+      setShowSkeleton(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setShowSkeleton(true), 180);
+    return () => window.clearTimeout(timer);
+  }, [isChecking]);
 
   useEffect(() => {
     const checkUserSession = async () => {
@@ -235,7 +256,7 @@ function RootRedirect() {
     void checkUserSession();
   }, []);
 
-  if (isChecking) return null;
+  if (isChecking) return showSkeleton ? <RouteCheckSkeleton /> : null;
   return <Navigate to={isUserLoggedIn ? "/connection" : "/guides"} replace />;
 }
 
