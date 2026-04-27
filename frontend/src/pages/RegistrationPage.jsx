@@ -14,8 +14,8 @@ export default function RegistrationPage({ notify }) {
   };
 
   return (
-    <>
+    <div className="mx-auto" style={{ maxWidth: "460px" }}>
       <RegistrationWizard notify={notify} onSuccess={handleSuccess} onStepChange={setStep} />
-    </>
+    </div>
   );
 }
