@@ -3,7 +3,12 @@ name: Deploy to VPS
 on:
   push:
     branches: [ "master" ]  # Замените на вашу основную ветку
-
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
 jobs:
   deploy:
     runs-on: ubuntu-latest
